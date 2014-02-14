@@ -1,0 +1,17 @@
+Rat CVS V3.2
+
+Drug A = Acetylcholine
+Drug B = Adenosine
+Drug C = Isoprenaline
+Drug D = Noradrenaline
+Drug E = Sodium nitroprusside
+Drug F = Cromokalim
+Drug G = Milrinone
+Drug H = Propranalol
+Drug I = Verapamil
+Drug J = L-NOARG
+Drug K = Atropine
+
+
+
+
