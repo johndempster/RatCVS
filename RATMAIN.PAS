@@ -45,6 +45,8 @@ unit Ratmain;
   V3.3.2 11/02/14 ..  Milrinone now increases heart rate (due to effect of PDE inhibition of pacemaker current)
                       Error in GetTrailingPressure fixed reducing repetitive fluctuations in traces
                       Time course of heart systolic contraction now gaussian function
+  V3.3.4 22/07/18     Adrenaline Beta2AdR EC50 reduced and Alpha1AdR EC50 increased to produce
+                      slight reduction in ABP at low concentrations and increase in ABP at high concentrations
   ======================================================================== }
 
 interface
@@ -52,7 +54,7 @@ interface
 uses
   SysUtils, WinTypes, WinProcs, Messages, Classes, Graphics, Controls,
   Forms, Dialogs, Menus, StdCtrls, ExtCtrls, AddDrug, Options,
-  Printers, About, Vcl.ComCtrls,math, HTMLHelpViewer, shellapi  ;
+  Printers, About, Vcl.ComCtrls,math, HTMLHelpViewer, shellapi, system.types, system.uitypes  ;
 
 const
      BPMax = 200 ;
@@ -154,7 +156,6 @@ type
     procedure FormCreate(Sender: TObject);
     procedure mnAdrenalineClick(Sender: TObject);
     procedure pbDisplayPaint(Sender: TObject);
-    procedure FormDestroy(Sender: TObject);
     procedure FormResize(Sender: TObject);
     procedure bStopClick(Sender: TObject);
     procedure sbRecordChange(Sender: TObject);
@@ -368,7 +369,6 @@ var
    BufPointer,EndOfBuf,FirstQuarter,LastQuarter : LongInt ;
    Initialized : boolean ;
    t : TTime ;
-   BP : TBP ;
    Marker : TMarker ;
    MarkerUnits : array[0..2] of string ;
    {Standard drugs }
@@ -415,7 +415,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
   ------------------------------------}
 
 begin
-     Caption := 'Rat Cardiovascular System V3.3.2 (Feb 2014) ' ;
+     Caption := 'Rat Cardiovascular System V3.3.4 (Jul 2018) ' ;
 
      ProgName := Caption ;
 
@@ -444,11 +444,9 @@ const
      SlowOff = 5E-4 ;
 
 var
-   ch,iCount,iNum,iDrug : Integer ;
-   x : single ;
+   ch,iNum,iDrug : Integer ;
    TempPath : Array[0..255] of Char ;
    TempName : Array[0..255] of Char ;
-   Done,GiveUp : Boolean ;
 begin
      { Get path to temporary file directory }
      GetTempPath( High(TempPath), TempPath ) ;
@@ -475,9 +473,9 @@ begin
      Drugs[iDrug] := TDrug.Create( 'Adrenaline', 'Adr' ) ;
      Drugs[iDrug].OnRate := FastOn ;
      Drugs[iDrug].RemovalRate := FastOff ;
-     SetAgonistPotency( Drugs[iDrug].Alpha1AdR, {5E-3} 3.5e-3 ) ;
+     SetAgonistPotency( Drugs[iDrug].Alpha1AdR, {5E-3} 7.5e-3 ) ;  {Increased to 7.5E-3 to cause increase in ABP at high concentrations 22.7.18 }
      SetAgonistPotency( Drugs[iDrug].Beta1AdR, 3.5E-3 ) ;
-     SetAgonistPotency( Drugs[iDrug].Beta2AdR, 5E-3 ) ;
+     SetAgonistPotency( Drugs[iDrug].Beta2AdR, {5E-3} 2E-3 ) ; {Reduced to 2E-3 to cause reduction in ABP at low concentrations 22.7.18}
      Drugs[iDrug].MinDose := 1E-4 ;
      Drugs[iDrug].MaxDose := 1E-1 ;
 
@@ -968,9 +966,9 @@ procedure TMainForm.CalculateTrace ;
   Calculate next step of simulated BP and HR
   ------------------------------------------}
 var
-   x,sum : single ;
-   i,ch,j : Integer ;
-   Num,Denom,HeartRate,BasalRate,s : single ;
+   x : single ;
+   i,j : Integer ;
+   Num,Denom : single ;
    PotencyShift,TMid,YMax,YMin : single ;
 begin
 
@@ -1122,7 +1120,7 @@ begin
 
      Art.Conductance := 5.0*(1.0
                         + (2.5*MusChR*(1.0-NOS))  { Muscarinic receptors VD }
-                        + (2.25*Beta2AdR)          { Beta-2 adrenoceptor VD }
+                        + ({2.25}1.9*Beta2AdR)   { Beta-2 adrenoceptor VD Decreased to 1.9 to allow alpha ADR vasosconstrictor to dominate at high concs.}
                         + (2.5*AdenR)             { Adenosine receptors VD }
                         + 2.0*NOX                 { Nitric oxide VD }
                         + 2.0*PDE                 { Phosphodiesterase inhibition VD }
@@ -1130,7 +1128,7 @@ begin
                         + 0.95*KChannels          { K channel opening VD }
                         + BradR                   { Bradykinin VD }
                         - 0.6*NOS                 { Inhib. of NO synthase VC }
-                        - 0.9*Alpha1ADR          { Alpha-1 adrenoceptor VD }
+                        - {0.9}1.35*Alpha1ADR     { Alpha-1 adrenoceptor VD Increased to 1.35 to emphasize vasoconstrictor effect at high concs. 22.07.18 }
                        { - 0.9*NicChR }            { Nicotinic VC }
                         - 0.9*Angt2R             { Angiotension II VC }
 
@@ -1908,15 +1906,6 @@ begin
      end;
 
 
-procedure TMainForm.FormDestroy(Sender: TObject);
-
-var
-   i : Integer ;
-begin
-
-
-     end;
-
 function ExtractFloat ( CBuf : string ; Default : Single ) : extended ;
 { ---------------------------------------------------
   Extract a floating point number from a string which
@@ -2090,7 +2079,6 @@ procedure TMainForm.mnContentsClick(Sender: TObject);
 //  -----------------------
 var
    pWinDir : PChar ;
-   WindowsDir : String ;
 begin
 
 
