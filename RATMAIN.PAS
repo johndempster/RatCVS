@@ -47,6 +47,9 @@ unit Ratmain;
                       Time course of heart systolic contraction now gaussian function
   V3.3.4 22/07/18     Adrenaline Beta2AdR EC50 reduced and Alpha1AdR EC50 increased to produce
                       slight reduction in ABP at low concentrations and increase in ABP at high concentrations
+  V3.3.5 19.06.19     Adrenaline Beta2AdR EC50 reduced and Alpha1AdR EC50 restored to previous values
+                      to produce INCREAESE in ABP at 5-10 ug/kg to make it more consistent with effect of ADR observed in original pithed rat papers.
+
   ======================================================================== }
 
 interface
@@ -415,7 +418,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
   ------------------------------------}
 
 begin
-     Caption := 'Rat Cardiovascular System V3.3.4 (Jul 2018) ' ;
+     Caption := 'Rat Cardiovascular System V3.3.5 (June 2019) ' ;
 
      ProgName := Caption ;
 
@@ -473,9 +476,13 @@ begin
      Drugs[iDrug] := TDrug.Create( 'Adrenaline', 'Adr' ) ;
      Drugs[iDrug].OnRate := FastOn ;
      Drugs[iDrug].RemovalRate := FastOff ;
-     SetAgonistPotency( Drugs[iDrug].Alpha1AdR, {5E-3} 7.5e-3 ) ;  {Increased to 7.5E-3 to cause increase in ABP at high concentrations 22.7.18 }
+     SetAgonistPotency( Drugs[iDrug].Alpha1AdR, 5E-3 {7.5e-3} ) ;  {Increased to 7.5E-3 to cause increase in ABP at high concentrations 22.7.18 }
+                                                                   // Restored to previous 5E-3 to increase alpha adrenoecrptor effect
+                                                                   // to ensure increase in ABP with 5-10 ug/kg as observed in original pithed rate paper 19.06.19
      SetAgonistPotency( Drugs[iDrug].Beta1AdR, 3.5E-3 ) ;
-     SetAgonistPotency( Drugs[iDrug].Beta2AdR, {5E-3} 2E-3 ) ; {Reduced to 2E-3 to cause reduction in ABP at low concentrations 22.7.18}
+     SetAgonistPotency( Drugs[iDrug].Beta2AdR, 5E-3 {2E-3} ) ; {Reduced to 2E-3 to cause reduction in ABP at low concentrations 22.7.18}
+                                                               // Restored to previous value 19.06.19
+
      Drugs[iDrug].MinDose := 1E-4 ;
      Drugs[iDrug].MaxDose := 1E-1 ;
 
