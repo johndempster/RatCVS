@@ -49,6 +49,7 @@ unit Ratmain;
                       slight reduction in ABP at low concentrations and increase in ABP at high concentrations
   V3.3.5 19.06.19     Adrenaline Beta2AdR EC50 reduced and Alpha1AdR EC50 restored to previous values
                       to produce INCREAESE in ABP at 5-10 ug/kg to make it more consistent with effect of ADR observed in original pithed rat papers.
+  V3.3.6 16.07.20     Chart display updated to use scopedisplay component. Vertical range can now be adjusted.
 
   ======================================================================== }
 
@@ -56,188 +57,33 @@ interface
 
 uses
   SysUtils, WinTypes, WinProcs, Messages, Classes, Graphics, Controls,
-  Forms, Dialogs, Menus, StdCtrls, ExtCtrls, AddDrug, Options,
-  Printers, About, Vcl.ComCtrls,math, HTMLHelpViewer, shellapi, system.types, system.uitypes  ;
+  Forms, Dialogs, Menus, StdCtrls, ExtCtrls,
+  Printers, Vcl.ComCtrls,math, HTMLHelpViewer, shellapi, system.types, system.uitypes,
+  ScopeDisplay, ValidatedEdit, System.StrUtils, Vcl.Imaging.pngimage  ;
 
 const
+     MaxPoints = 10000000 ;
+     MaxDisplayPoints = 4000 ;
      BPMax = 200 ;
+     MaxADCValue = 2047 ;
+     MinADCValue = -2048 ;
+    MaxMarkers = 500 ;
+    NumBytesPerMarker = 40 ;
+    FileHeaderSize = (MaxMarkers+10)*NumBytesPerMarker ;
+    DataFileExtension = '.rat' ;
+
      ChABP = 0 ;   { Arterial blood pressure channel }
      ChLVP = 1 ;   { Average bloood pressure channel }
      ChCVP = 2 ;   { Venous blood pressure }
      ChHCF = 3 ;   { Cardiac contractility }
      ChHR = 4 ;    { Heart rate channel }
-     ChMarker = 5 ;  { Event marker channel }
-     ChMarkerValue = 6 ;
-     ChMarkerUnits = 7 ;
-     ChannelLimit = 7 ;
-     NumChannels = ChannelLimit+1 ;
      None = -1. ;
-     mgUnits = 0 ;
-     ugUnits = 1 ;
-     NoUnits = 2 ;
 
 type
     TDrugProperties = record
                     Potency : single ;
                     Efficacy : single ;
                     end ;
-
-  TMainForm = class(TForm)
-    MainMenu1: TMainMenu;
-    StandardDrugs: TMenuItem;
-    mndrugAL: TMenuItem;
-    mnOptions: TMenuItem;
-    Timer: TTimer;
-    mnAdrenaline: TMenuItem;
-    mnNoradrenaline: TMenuItem;
-    mnIsoprenaline: TMenuItem;
-    mnAcetylcholine: TMenuItem;
-    mnPropranolol: TMenuItem;
-    mnAtropine: TMenuItem;
-    mnFile: TMenuItem;
-    mnNewRat: TMenuItem;
-    mnLoadRat: TMenuItem;
-    mnSaveRat: TMenuItem;
-    mnPrint: TMenuItem;
-    PrintSetup1: TMenuItem;
-    mnExit: TMenuItem;
-    mnHelp: TMenuItem;
-    mnContents: TMenuItem;
-    mnAbout: TMenuItem;
-    SaveDialog: TSaveDialog;
-    OpenDialog: TOpenDialog;
-    PrinterSetupDialog: TPrinterSetupDialog;
-    mnDrugA: TMenuItem;
-    mnDrugB: TMenuItem;
-    mnDrugC: TMenuItem;
-    mnDrugD: TMenuItem;
-    mnDrugE: TMenuItem;
-    mnDrugF: TMenuItem;
-    mnDrugG: TMenuItem;
-    mnDrugH: TMenuItem;
-    mndrugI: TMenuItem;
-    mndrugJ: TMenuItem;
-    mnLNOARG: TMenuItem;
-    mn8SPT: TMenuItem;
-    Phentolamine1: TMenuItem;
-    Verapamil1: TMenuItem;
-    mnGlyceryltrinitrate: TMenuItem;
-    N1: TMenuItem;
-    Cromakalim1: TMenuItem;
-    mnAdenosine1: TMenuItem;
-    NerveStimulation1: TMenuItem;
-    mnStimCardiac: TMenuItem;
-    mnStimAdrenal: TMenuItem;
-    mnAngiotensin2: TMenuItem;
-    mnCaptopril: TMenuItem;
-    mnLosartan: TMenuItem;
-    mnRenal: TMenuItem;
-    mnDigoxin: TMenuItem;
-    mnMilrinone: TMenuItem;
-    mnPhenylephrine: TMenuItem;
-    mnPrazozin: TMenuItem;
-    mnAtenolol: TMenuItem;
-    N2: TMenuItem;
-    mndisplay: TMenuItem;
-    mnGlibenclamide: TMenuItem;
-    mnStimBloodVessels: TMenuItem;
-    mnStimVagus: TMenuItem;
-    Page: TPageControl;
-    ChartTab: TTabSheet;
-    PictureTab: TTabSheet;
-    pbDisplay: TPaintBox;
-    ControlGrp: TGroupBox;
-    sbRecord: TScrollBar;
-    bStart: TButton;
-    bStop: TButton;
-    edCursor: TEdit;
-    GroupBox1: TGroupBox;
-    rbNormalRat: TRadioButton;
-    rbPithedRat: TRadioButton;
-    ExpImage: TImage;
-    procedure TimerTimer(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
-    procedure mnAdrenalineClick(Sender: TObject);
-    procedure pbDisplayPaint(Sender: TObject);
-    procedure FormResize(Sender: TObject);
-    procedure bStopClick(Sender: TObject);
-    procedure sbRecordChange(Sender: TObject);
-    procedure bStartClick(Sender: TObject);
-    procedure mnPrintClick(Sender: TObject);
-    procedure pbDisplayMouseMove(Sender: TObject; Shift: TShiftState; X,
-      Y: Integer);
-    procedure mnExitClick(Sender: TObject);
-    procedure mnContentsClick(Sender: TObject);
-    procedure mnAboutClick(Sender: TObject);
-    procedure mnLoadRatClick(Sender: TObject);
-    procedure mnSaveRatClick(Sender: TObject);
-    procedure mnNewRatClick(Sender: TObject);
-    procedure FormActivate(Sender: TObject);
-    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
-    procedure FormClose(Sender: TObject; var Action: TCloseAction);
-    procedure mnStimCardiacClick(Sender: TObject);
-    procedure mnStimAdrenalClick(Sender: TObject);
-    procedure mnStimVagusClick(Sender: TObject);
-    procedure mnRenalClick(Sender: TObject);
-    procedure PrintSetup1Click(Sender: TObject);
-    procedure mndisplayClick(Sender: TObject);
-    procedure mnStimBloodVesselsClick(Sender: TObject);
-    procedure mnHelpClick(Sender: TObject);
-
-  private
-    { Private declarations }
-    procedure InitializeDisplay ;
-    procedure CalculateTrace ;
-    procedure PrintTraces ;
-    procedure InitializeSimulation ;
-    procedure SetAgonistPotency(
-              var Drug : TDrugProperties ;
-              Potency : single
-              ) ;
-    procedure SetAntagonistPotency(
-              var Drug : TDrugProperties ;
-              Potency : single
-              ) ;
-
-    Function ReceptorActivation(
-          iDrug : Integer ;
-          Dose : single ;
-          var Drug : TDrugProperties ;
-          var Numerator : single ;
-          var Denominator : single ;
-          PotencyShift : single
-          ) : single ;
-  public
-    { Public declarations }
-    ProgName : string ;
-    WinDir : PChar ;
-  end;
-
-    TElement = class(TObject)
-               public
-               Conductance : single ;
-               Elastance : single ;
-               Pressure : single ;
-               MaxPressure : single ;
-               MinPressure : single ;
-               MeanPressure : single ;
-               PressureLo : single ;
-               PressureHi : single ;
-               TLo : single ;
-               THi : single ;
-               Volume : single ;
-               Volume0 : single ;
-               Flow : Single ;
-               Rate : single ;
-               TSystole : single ;
-               NextBeat : single ;
-               Time : single ;
-               Force : single ;
-               procedure CalculatePressureRange( t : single ) ;
-               procedure InitialisePressureRange ;
-               function GetLeadingPressure : single ;
-               function GetTrailingPressure : single ;
-               end ;
 
     TDrug = class(TObject)
             public
@@ -269,36 +115,39 @@ type
             RemovalRate : single ;
             MinDose : single ;
             MaxDose : single ;
+            Antagonist : Boolean ;
             constructor Create(
                         NameIn : String ;
                         ShortNameIn : string
                         ) ;
             end ;
 
-function MaxFlt( const Buf : array of Single ) : Single ;
-function MinFlt( const Buf : array of Single ) : Single ;
-function MaxInt( const Buf : array of Integer ) : Integer ;
-function AddNoise( Proportion : single ) : single ;
-Procedure UpdateCirculatingDrug( var Drug : TDrug ) ;
-function ExtractFloat ( CBuf : string ; Default : Single ) : extended ;
-function FindDrug( DrugList : Array of TDrug ; DrugName : string ) : Integer ;
+    TElement = class(TObject)
+               public
+               Conductance : single ;
+               Elastance : single ;
+               Pressure : single ;
+               MaxPressure : single ;
+               MinPressure : single ;
+               MeanPressure : single ;
+               PressureLo : single ;
+               PressureHi : single ;
+               TLo : single ;
+               THi : single ;
+               Volume : single ;
+               Volume0 : single ;
+               Flow : Single ;
+               Rate : single ;
+               TSystole : single ;
+               NextBeat : single ;
+               Time : single ;
+               Force : single ;
+               procedure CalculatePressureRange( t : single ) ;
+               procedure InitialisePressureRange ;
+               function GetLeadingPressure : single ;
+               function GetTrailingPressure : single ;
+               end ;
 
-function PrinterPointsToPixels( PointSize : Integer ) : Integer ;
-function Pressure( Element : TElement ) : single ;
-function PrinterCmToPixels(
-         const Axis : string;
-         cm : single
-         ) : Integer ;
-var
-  MainForm: TMainForm;
-
-implementation
-
-uses Setpage;
-
-{$R *.DFM}
-type
-    TState = (Recording,Idle,Replay) ;
     TTime = record
           time : single ;
           diastole : single ;
@@ -307,20 +156,12 @@ type
           next : single ;
           end ;
 
-
     TBP = record
         diastolic : single ;
         systolic : single ;
         mean : single ;
         value : single ;
         end ;
-
-
-    TMarker = record
-            Index : single ;
-            Value : single ;
-            Units : single ;
-            end ;
 
     TNerve = record
            Stimulated : boolean ;
@@ -329,51 +170,117 @@ type
            Activity : single ;
            end ;
 
-
 TString6 = string[6] ;
-TChannel = record
-         xMin : single ;
-         xMax : single ;
-         yMin : single ;
-         yMax : single ;
-         xScale : single ;
-         yScale : single ;
-         yCal : single ;
-         Left : LongInt ;
-         Right : LongInt ;
-         Top : LongInt ;
-         Bottom : LongInt ;
-         TimeZero : single ;
-         ADCUnits : Tstring6 ;
-         ADCName : TString6 ;
-         ZeroIndex : LongInt ;
-         CursorTime : single ;
-         CursorValue : single ;
-         color : TColor ;
-         Value : single ;
-         InUse : boolean ;
-         end ;
-TBuf = Array[0..(8*4096-1)] of single ;
 TFileBuf = Array[0..511] of single ;
 
+  TMainForm = class(TForm)
+    MainMenu1: TMainMenu;
+    mnFile: TMenuItem;
+    mnNewRat: TMenuItem;
+    mnLoadRat: TMenuItem;
+    mnSaveRat: TMenuItem;
+    mnPrint: TMenuItem;
+    PrintSetup1: TMenuItem;
+    mnExit: TMenuItem;
+    mnHelp: TMenuItem;
+    mnContents: TMenuItem;
+    SaveDialog: TSaveDialog;
+    OpenDialog: TOpenDialog;
+    Page: TPageControl;
+    ChartTab: TTabSheet;
+    PictureTab: TTabSheet;
+    ExpImage: TImage;
+    scDisplay: TScopeDisplay;
+    Timer: TTimer;
+    TDisplayPanel: TPanel;
+    lbTDisplay: TLabel;
+    Label1: TLabel;
+    edTDisplay: TValidatedEdit;
+    bTDisplayDouble: TButton;
+    bTDisplayHalf: TButton;
+    edStartTime: TValidatedEdit;
+    sbDisplay: TScrollBar;
+    bStart: TButton;
+    bStop: TButton;
+    ControlsGrp: TGroupBox;
+    TissueGrp: TGroupBox;
+    bNewExperiment: TButton;
+    GroupBox6: TGroupBox;
+    bStimulationOn: TButton;
+    StimulationTypeGrp: TGroupBox;
+    rbSympNerveToHeart: TRadioButton;
+    rbSympNerve: TRadioButton;
+    PageControl1: TPageControl;
+    AgonistsTab: TTabSheet;
+    Label2: TLabel;
+    cbAgonist: TComboBox;
+    cbAgonistDose: TComboBox;
+    bAddAgonist: TButton;
+    AntagonistsTab: TTabSheet;
+    Label4: TLabel;
+    cbAntagonist: TComboBox;
+    cbAntagonistDose: TComboBox;
+    UnknownsTab: TTabSheet;
+    Label7: TLabel;
+    cbUnknown: TComboBox;
+    cbUnknownDose: TComboBox;
+    rbSympNerveToAdrenals: TRadioButton;
+    rbRenalNerve: TRadioButton;
+    RadioButton1: TRadioButton;
+    gpExperimentType: TGroupBox;
+    rbNormalRat: TRadioButton;
+    rbPithedRat: TRadioButton;
+    bAddUnknown: TButton;
+    bAddAntagonist: TButton;
+    mnEdit: TMenuItem;
+    mnCopyData: TMenuItem;
+    mnCopyImage: TMenuItem;
+    PrinterSetupDialog: TPrinterSetupDialog;
+    procedure TimerTimer(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormResize(Sender: TObject);
+    procedure bStopClick(Sender: TObject);
+    procedure bStartClick(Sender: TObject);
+    procedure mnExitClick(Sender: TObject);
+    procedure mnContentsClick(Sender: TObject);
+    procedure mnLoadRatClick(Sender: TObject);
+    procedure mnSaveRatClick(Sender: TObject);
+    procedure mnNewRatClick(Sender: TObject);
+    procedure FormActivate(Sender: TObject);
+    procedure FormCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
+    procedure PrintSetup1Click(Sender: TObject);
+    procedure cbAgonistChange(Sender: TObject);
+    procedure cbAntagonistChange(Sender: TObject);
+    procedure cbUnknownChange(Sender: TObject);
+    procedure bAddAgonistClick(Sender: TObject);
+    procedure bAddAntagonistClick(Sender: TObject);
+    procedure bAddUnknownClick(Sender: TObject);
+    procedure bStimulationOnClick(Sender: TObject);
+    procedure edStartTimeKeyPress(Sender: TObject; var Key: Char);
+    procedure edTDisplayKeyPress(Sender: TObject; var Key: Char);
+    procedure bTDisplayDoubleClick(Sender: TObject);
+    procedure bTDisplayHalfClick(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+    procedure mnCopyImageClick(Sender: TObject);
+    procedure mnCopyDataClick(Sender: TObject);
+    procedure mnPrintClick(Sender: TObject);
+    procedure bNewExperimentClick(Sender: TObject);
+    procedure scDisplayCursorChange(Sender: TObject);
 
+  private
+    { Private declarations }
 
-var
-   State : TState ;
-   OldPos : Array[0..ChannelLimit] of TPoint ;
-   Channel : Array[0..Channellimit] of TChannel ;
-   Buf : TBuf ;
-   FileBuf : TFileBuf ;
-   FileBufPointer, EndOfFileBuf : LongInt ;
-   FileHandle : Integer ;
-   FilePointer : LongInt ;
-   FileName : string ;
-   TempFileName : string ;
-   BufPointer,EndOfBuf,FirstQuarter,LastQuarter : LongInt ;
-   Initialized : boolean ;
+    ADC : Array[0..MaxPoints-1] of SmallInt ;
+    NumPointsInBuf : Integer ;   // No. of data points in buffer
+    StartPoint : Integer ;       // Starting point of chart display
+    InitialMixing : Cardinal ;
+    MarkerList : TStringList ;   // Chart annotation list
+
+    NumStandardDrugs : Integer ; // No. of standard drugs available
+
+   UnsavedData : Boolean ;
    t : TTime ;
-   Marker : TMarker ;
-   MarkerUnits : array[0..2] of string ;
    {Standard drugs }
    Drugs : Array[0..50] of TDrug ;
    MusChR : single ; { Proportion of muscarinic cholinoceptors activated }
@@ -395,15 +302,19 @@ var
    iAngiotensin1 : Integer ; { Angiotensin I entry with Drugs array }
    Angt2R : single ; { Angiotensin II receptor }
    iAngiotensin2ACE : Integer ; { ACE-produced Angiotensin II entry with Drugs array }
-   iRenalNerve : Integer ;
-   iVagusNerve : Integer ;
+
+   // Index into Drugs[] of neurtransmitters activated by selected nerve pathways
+   iSympHeart : Integer ;         // Sympathetic stimulation of heart
+   iSympBloodVessels : Integer ;  // Sympathetic stimulation of blood vessels
+   iSympAdrenal : Integer ;       // Sympathetic stimulation of adrenal glands
+   iRenalNerve : Integer ;        // Renal nerve stimulation
+   iVagusNerve : Integer ;        // Vagus nerve stimulation
+
    ACE : single ;    { Angiotensin converting enzyme activity }
    BradR : single ;  { Bradykinin recptor }
    DigR : single ;   { Digoxin activity on cardiac force }
    PDE : single ; { Degree of phosphidesterase inhibition }
 
-   ChartWidth : single ;
-   Baroreceptors : single ;
    Dead : boolean ;
    Dying : LongInt ;
    Fibrillation : single ;
@@ -412,13 +323,76 @@ var
    Heart : TElement ;
    Con : TElement ;
 
+
+    procedure CalculateTrace ;
+    procedure InitializeSimulation ;
+    procedure SetAgonistPotency(
+              var Drug : TDrugProperties ;
+              Potency : single
+              ) ;
+
+    procedure SetAntagonistPotency(
+              var Drug : TDrugProperties ;
+              Potency : single
+              ) ;
+
+    function IsAgonist( Drug : TDrug ) : Boolean ;
+
+    Function ReceptorActivation(
+          iDrug : Integer ;
+          Dose : single ;
+          var Drug : TDrugProperties ;
+          var Numerator : single ;
+          var Denominator : single ;
+          PotencyShift : single
+          ) : single ;
+
+    procedure UpdateDisplay ;
+
+    procedure AddChartAnnotations ;
+    procedure UpdateDisplayDuration ;
+
+    function AddNoise( Proportion : single ) : single ;
+    Procedure UpdateCirculatingDrug( var Drug : TDrug ) ;
+    function ExtractFloat ( CBuf : string ; Default : Single ) : extended ;
+
+    function Pressure( Element : TElement ) : single ;
+
+    procedure SetDoseList(
+              cbDrug : TComboBox ;
+              cbDose : TComboBox ) ;
+
+   procedure AddDrugMarker(
+             ChartAnnotation : String
+             ) ;
+
+   procedure LoadFromFile( FileName : String ) ;
+   procedure SaveToFile( FileName : String ) ;
+
+  public
+    { Public declarations }
+    ProgName : string ;
+    WinDir : PChar ;
+  end;
+
+
+
+var
+  MainForm: TMainForm;
+
+implementation
+
+uses PrintUnit, shared ;
+
+{$R *.DFM}
+
 procedure TMainForm.FormCreate(Sender: TObject);
 { ------------------------------------
   Initialisations when form is created
   ------------------------------------}
 
 begin
-     Caption := 'Rat Cardiovascular System V3.3.5 (June 2019) ' ;
+     Caption := 'Rat Cardiovascular System (c) J. Dempster, University of Strathclyde (1996-2020) V3.3.6 (16.07.20)' ;
 
      ProgName := Caption ;
 
@@ -429,9 +403,22 @@ begin
      Ven := TElement.Create ;
      Con := TElement.Create ;
 
+     // Create annotation list
+     MarkerList := TStringList.Create ;
+
      InitializeSimulation ;
+
      end;
 
+
+procedure TMainForm.FormDestroy(Sender: TObject);
+// ---------------------------
+// Tidy up when form destroyed
+// ---------------------------
+
+begin
+    MarkerList.Free ;
+end;
 
 procedure TMainForm.InitializeSimulation ;
 { ---------------------------------------------
@@ -447,22 +434,9 @@ const
      SlowOff = 5E-4 ;
 
 var
-   ch,iNum,iDrug : Integer ;
-   TempPath : Array[0..255] of Char ;
-   TempName : Array[0..255] of Char ;
+   iDrug,i : Integer ;
 begin
-     { Get path to temporary file directory }
-     GetTempPath( High(TempPath), TempPath ) ;
-     { Create a temp file name }
-     iNum := GetTempFileName( TempPath, pFilePrefix, 0, TempName ) ;
-     TempFileName := TempName ;
 
-     { Open temporary file }
-     FileHandle := FileCreate( TempFileName ) ;
-     if FileHandle <= 0 then begin
-        MessageDlg('Cannot open work file!', mtWarning,[mbOK],0) ;
-        close ;
-        end ;
      Caption := ProgName ;
 
      {Initialise drug doses and potencies }
@@ -648,15 +622,6 @@ begin
 
 
      Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'AngiotensinIIACE', 'An2' ) ;
-     Drugs[iDrug].OnRate := FastOn ;
-     Drugs[iDrug].RemovalRate := FastOff ;
-     SetAgonistPotency( Drugs[iDrug].Angt2R, 1E-4 ) ;
-     iAngioTensin2ACE := iDrug ;
-     Drugs[iDrug].MinDose := 1E-4 ;
-     Drugs[iDrug].MaxDose := 1E-2 ;
-
-     Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Captopril', 'Cap' ) ; { ACE inhibitor }
      Drugs[iDrug].OnRate := SlowOn ;
      Drugs[iDrug].RemovalRate := SlowOff ;
@@ -696,6 +661,21 @@ begin
      SetAgonistPotency( Drugs[iDrug].PDE, 10.0 ) ;
      Drugs[iDrug].MinDose := 1. ;
      Drugs[iDrug].MaxDose := 1000. ;
+
+     NumStandardDrugs := iDrug + 1 ;
+
+     // Create list of known agonists and antagonists and dose list for first in list
+
+     cbAgonist.Clear ;
+     cbAntagonist.Clear ;
+     for i := 0 to NumStandardDrugs-1 do
+         begin
+         if IsAgonist(Drugs[i]) then cbAgonist.Items.AddObject( Drugs[i].Name, TObject(i))
+         else cbAntagonist.Items.AddObject( Drugs[i].Name, TObject(i)) ;
+         end ;
+
+     SetDoseList( cbAgonist, cbAgonistDose ) ;
+     SetDoseList( cbAntagonist, cbAntagonistDose ) ;
 
 
 {    *** UNKNOWN DRUGS *****************************************************}
@@ -807,6 +787,14 @@ begin
      Drugs[iDrug].MinDose := 0.1 ;
      Drugs[iDrug].MaxDose := 100. ;
 
+     // Create list of unknown drugs
+
+     cbUnknown.Clear ;
+     for i := NumStandardDrugs to iDrug do
+         begin
+         cbUnknown.Items.AddObject( Drugs[i].Name, TObject(i))
+         end ;
+    SetDoseList( cbUnknown, cbUnknownDose ) ;
 
 
 {    *** NERVE STIMULATION **************************************************}
@@ -826,6 +814,7 @@ begin
      SetAgonistPotency( Drugs[iDrug].Alpha1AdR, 5E-3 ) ;
      SetAgonistPotency( Drugs[iDrug].Beta1AdR, 3.55E-3 ) ;
      SetAgonistPotency( Drugs[iDrug].Beta2AdR, 5E-3 ) ;
+     iSympAdrenal := iDrug ;
 
      { Blood vessel symp. nerve stimulation - noradrenaline }
      Inc(iDrug) ;
@@ -835,6 +824,7 @@ begin
      SetAgonistPotency( Drugs[iDrug].Alpha1AdR, 1E-2 ) ;
      SetAgonistPotency( Drugs[iDrug].Beta1AdR, 1.5E-2 ) ;
      SetAgonistPotency( Drugs[iDrug].Beta2AdR, 1.5E-1 ) ;
+     iSympBloodVessels := iDrug ;
 
      { Vagus nerve stimulation - cholinergic agonist }
      Inc(iDrug) ;
@@ -868,52 +858,97 @@ begin
      SetAgonistPotency( Drugs[iDrug].Beta1AdR, 1E-2 ) ;
      iBeta1AdrNerves := iDrug ;
 
+     // ACE produced Angiotensin II via renal nerve stimulation
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'AngiotensinIIACE', 'An2' ) ;
+     Drugs[iDrug].OnRate := FastOn ;
+     Drugs[iDrug].RemovalRate := FastOff ;
+     SetAgonistPotency( Drugs[iDrug].Angt2R, 1E-4 ) ;
+     iAngioTensin2ACE := iDrug ;
+     Drugs[iDrug].MinDose := 1E-4 ;
+     Drugs[iDrug].MaxDose := 1E-2 ;
+
+
      { Chart recorder traces }
 
+     { Setuo chart display }
+     scDisplay.MaxADCValue := MaxADCValue ;
+     scDisplay.MinADCValue := MinADCValue ;
+     scDisplay.DisplayGrid := True ;
+
+     scDisplay.MaxPoints := MaxDisplayPoints ;
+     scDisplay.NumPoints := 0 ;
+     scDisplay.NumChannels := 5 ;
+     sbDisplay.Max := 0 ;
+
+     scDisplay.TScale := 1/20.0 ;
+     edTDisplay.LoLimit := 1.0/scDisplay.TScale ;
+     edTDisplay.HiLimit := 1E5 ;
+     edTDisplay.Scale := scDisplay.TScale ;
+     edStartTime.Scale := scDisplay.TScale ;
+     edTDisplay.Value := scDisplay.MaxPoints ;
+     scDisplay.XMin := 0 ;
+     scDisplay.XMax := scDisplay.MaxPoints -1 ;
+
      { Blood pressure }
-     Channel[ChABP].ADCName := 'ABP' ;
-     Channel[ChABP].ADCUnits := 'mmHg' ;
-     Channel[ChABP].yMin := 0. ;
-     Channel[ChABP].yMax := 200.0 ;
-     Channel[ChABP].yCal := 20.0 ;
-     Channel[ChABP].color := clBlue ;
-     Channel[ChABP].InUse := True ;
+     scDisplay.ChanName[ChABP] := 'ABP' ;
+     scDisplay.ChanUnits[ChABP] := 'mmHg' ;
+     scDisplay.ChanScale[ChABP] := 300.0 / MaxADCValue ;
+     scDisplay.ChanZero[ChABP] := 0.0 ;
+     scDisplay.ChanOffsets[ChABP] := chABP ;
+     scDisplay.yMax[ChABP] := 200.0/scDisplay.ChanScale[ChABP] ;
+     scDisplay.yMin[ChABP]:= 0.0 ;
+     scDisplay.ChanVisible[ChABP] := True ;
 
      { Left ventricular pressure }
-     Channel[ChLVP].ADCName := 'LVP' ;
-     Channel[ChLVP].ADCUnits := 'mmHg' ;
-     Channel[ChLVP].yMin := 0. ;
-     Channel[ChLVP].yMax := 200.0 ;
-     Channel[ChLVP].yCal := 20.0 ;
-     Channel[ChLVP].color := clBlue ;
-     Channel[ChLVP].InUse := True ;
+     scDisplay.ChanName[chLVP] := 'LVP' ;
+     scDisplay.ChanUnits[chLVP] := 'mmHg' ;
+     scDisplay.ChanScale[ChLVP] := 300.0 / MaxADCValue ;
+     scDisplay.ChanZero[chLVP] := 0.0 ;
+     scDisplay.ChanOffsets[chLVP] := chLVP ;
+     scDisplay.yMax[chLVP] := 200.0/scDisplay.ChanScale[ChLVP] ;
+     scDisplay.yMin[chLVP]:= 0.0 ;
+     scDisplay.ChanVisible[chLVP] := True ;
 
      { Venous Pressure }
-     Channel[ChCVP].ADCName := 'VBP' ;
-     Channel[ChCVP].ADCUnits := 'mmHg' ;
-     Channel[ChCVP].yMin := 0. ;
-     Channel[ChCVP].yMax := 20.0 ;
-     Channel[ChCVP].yCal := 2.0 ;
-     Channel[ChCVP].color := clBlue ;
-     Channel[ChCVP].InUse := True ;
+     scDisplay.ChanName[chCVP] := 'VBP' ;
+     scDisplay.ChanUnits[chCVP] := 'mmHg' ;
+     scDisplay.ChanScale[ChCVP] := 50.0 / MaxADCValue ;
+     scDisplay.ChanZero[chCVP] := 0.0 ;
+     scDisplay.ChanOffsets[chCVP] := chCVP ;
+     scDisplay.yMax[chCVP] := 20.0/scDisplay.ChanScale[ChCVP] ;
+     scDisplay.yMin[chCVP]:= 0.0 ;
+     scDisplay.ChanVisible[chCVP] := True ;
 
      { Cardiac contractile force (dLVP/dt)/LVP }
-     Channel[ChHCF].ADCName := 'HF' ;
-     Channel[ChHCF].ADCUnits := ' ' ;
-     Channel[ChHCF].yMin := 0.0 ;
-     Channel[ChHCF].yMax := 20.0 ;
-     Channel[ChHCF].yCal := 2.0 ;
-     Channel[ChHCF].color := clBlue ;
-     Channel[ChHCF].InUse := True ;
+     scDisplay.ChanName[chHCF] := 'HF' ;
+     scDisplay.ChanUnits[chHCF] := '' ;
+     scDisplay.ChanZero[chHCF] := 0.0 ;
+     scDisplay.ChanScale[ChHCF] := 20.0 / MaxADCValue ;
+     scDisplay.ChanOffsets[chHCF] := chHCF ;
+     scDisplay.yMax[chHCF] := 20.0/scDisplay.ChanScale[ChHCF] ;
+     scDisplay.yMin[chHCF]:= 0.0 ;
+     scDisplay.ChanVisible[chHCF] := True ;
 
      { Heart rate }
-     Channel[ChHR].ADCName := 'HR' ;
-     Channel[ChHR].ADCUnits := 'BPM' ;
-     Channel[ChHR].yMin := -10. ;
-     Channel[ChHR].yMax := 800.0 ;
-     Channel[ChHR].yCal := 100.0 ;
-     Channel[ChHR].color := clBlue ;
-     Channel[ChHR].InUse := True ;
+     scDisplay.ChanName[chHR] := 'HR' ;
+     scDisplay.ChanUnits[chHR] := 'BPM' ;
+     scDisplay.ChanZero[chHR] := 0.0 ;
+     scDisplay.ChanScale[ChHR] := 1600.0 / MaxADCValue ;
+     scDisplay.ChanOffsets[chHR] := chHR ;
+     scDisplay.yMax[chHR]  := 800.0/scDisplay.ChanScale[ChHR] ;
+     scDisplay.yMin[chHR]:= -10.0 ;
+     scDisplay.ChanVisible[chHR] := True ;
+
+     { Create a set of zero level cursors }
+     scDisplay.ClearHorizontalCursors ;
+     scDisplay.AddHorizontalCursor( 0, clRed, True, '' ) ;
+     scDisplay.HorizontalCursors[0] := 0 ;
+
+     // Vertical readout cursor
+     scDisplay.ClearVerticalCursors ;
+     scDisplay.AddVerticalCursor(-1,clGreen, '?y') ;
+     scDisplay.VerticalCursors[0] := scDisplay.MaxPoints div 2 ;
 
      Heart.Elastance := 1./{75.} 30.0 ;
      Heart.Volume0 := 5. ;
@@ -937,193 +972,250 @@ begin
      t.time := 0. ;
      t.next := -1.0 ;
 
-     BufPointer := -1 ;
-     EndOfBuf := ((High(Buf) + 1 ) div NumChannels) - 1;
-     FirstQuarter := ((EndOfBuf+1) div 4) -1;
-     LastQuarter := EndofBuf - FirstQuarter  ;
-     ChartWidth := t.Step*High(Buf) / NumChannels ;
-     for ch := 0 to ChMarker-1 do begin
-         Channel[ch].xMin := 0 ;
-         Channel[ch].xMax := EndOfBuf ;
-         Channel[ch].Value := 0. ;
-         end ;
+     { Clear buffer  }
+     for i := 0 to MaxPoints-1 do ADC[i] := 0 ;
+     StartPoint :=  0 ;
+     scDisplay.SetDataBuf( @ADC[StartPoint] ) ;
+     scDisplay.XOffset := -1 ;
+     NumPointsInBuf := 0 ;
+     MarkerList.Clear ;
 
-     Marker.Index := None ;
-     Marker.Value := 0. ;
-     Marker.Units := 0. ;
-     MarkerUnits[mgUnits] := 'mg/kg' ;
-     MarkerUnits[ugUnits] := 'ug/kg' ;
-     MarkerUnits[NoUnits] := '' ;
-
-     EndOfFileBuf := High(FileBuf) ;
-     FileBufPointer := 0 ;
      Dead := False ;
      Dying := 0 ;
      Fibrillation := 0.0 ;
-     InitializeDisplay ;
-     State := Idle ;
      bStart.Enabled := True ;
      bStop.Enabled := False ;
-     sbRecord.Enabled := False ;
+     gpExperimentType.Enabled := True ;
+
      end ;
+
+
+procedure TMainForm.TimerTimer(Sender: TObject);
+// ---------------------
+// Timed event scheduler
+// ---------------------
+begin
+
+     if not bStart.Enabled then
+        begin
+        { Calculate next set of simulation values }
+        CalculateTrace ;
+        UpdateDisplay ;
+        InitialMixing := InitialMixing + 1 ;
+        if NumPointsInBuf >= MaxPoints then bStart.Enabled := True ;
+
+        end
+     else
+        begin
+        // Display
+        if scDisplay.XOffset <> sbDisplay.Position then
+           begin
+           scDisplay.XOffset := sbDisplay.Position ;
+           edStartTime.Value := scDisplay.XOffset ;
+           scDisplay.SetDataBuf( @ADC[sbDisplay.Position*scDisplay.NumChannels] ) ;
+           scDisplay.NumPoints := Min( scDisplay.MaxPoints,
+                                       sbDisplay.Max - sbDisplay.Position) ;
+           // Add annotations to chart
+           AddChartAnnotations ;
+           scDisplay.Invalidate ;
+           end ;
+        end ;
+
+end;
+
+
+procedure TMainForm.UpdateDisplay ;
+// -------------------
+// Update chart display
+// -------------------
+var
+    ch,StartPoints : Integer ;
+begin
+
+     // Ensure that horizontal cursor remains at zero
+     for ch := 0 to scDisplay.NumChannels-1 do
+         begin
+         if scDisplay.HorizontalCursors[ch] <> 0 then scDisplay.HorizontalCursors[ch] := 0 ;
+         end;
+
+    if scDisplay.NumPoints >= scDisplay.MaxPoints then
+       begin
+       StartPoints := scDisplay.MaxPoints div 10 ;
+       sbDisplay.Position := NumPointsInBuf - StartPoints + 1 ;
+       scDisplay.XOffset := sbDisplay.Position ;
+       scDisplay.SetDataBuf( @ADC[sbDisplay.Position*scDisplay.NumChannels] ) ;
+       sbDisplay.Max := sbDisplay.Max + scDisplay.MaxPoints ;
+       edStartTime.HiLimit := sbDisplay.Max ;
+       // Add annotations to chart
+       AddChartAnnotations ;
+       end ;
+
+    scDisplay.DisplayNewPoints( NumPointsInBuf - scDisplay.XOffset ) ;
+
+end ;
+
+
+procedure TMainForm.AddChartAnnotations ;
+// -------------------------------------
+// Add drug annotations to chart display
+// -------------------------------------
+var
+    i : Integer ;
+    MarkerPosition : Integer ;
+begin
+
+     scDisplay.ClearMarkers ;
+     for i := 0 to MarkerList.Count-1 do
+         begin
+         MarkerPosition := Integer(MarkerList.Objects[i]) - scDisplay.XOffset ;
+         if (MarkerPosition > 0) and (MarkerPosition < scDisplay.MaxPoints) then
+            begin
+            scDisplay.AddMarker( MarkerPosition, MarkerList.Strings[i] ) ;
+            end ;
+         end ;
+     end ;
+
 
 
 procedure TMainForm.CalculateTrace ;
 { -------------------------------------------
   Calculate next step of simulated BP and HR
   ------------------------------------------}
+const
+    NumStepsPerDisplayPoint = 100 ;
 var
    x : single ;
    i,j : Integer ;
    Num,Denom : single ;
    PotencyShift,TMid,YMax,YMin : single ;
+  ch: Integer;
 begin
 
-     if t.time >= t.next then begin
+     if t.time >= t.next then
+        begin
 
         { Ensure resting levels of angiotensin in circulation }
-        Drugs[iRenalNerve].Dose := MaxFlt([Drugs[iRenalNerve].Dose,
-                                           Drugs[iRenalNerve].Angt1R.Potency*0.25]) ;
+        Drugs[iRenalNerve].Dose := Max( Drugs[iRenalNerve].Dose,
+                                        Drugs[iRenalNerve].Angt1R.Potency*0.25) ;
 
         { Nicotinic (ganglion) cholinoceptor activation }
         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-            NicChR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].NicChR,
-                      Num,Denom,1.0 ) ;
+            NicChR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].NicChR,Num,Denom,1.0 ) ;
 
         { Effects of sympathetic nerve and vagal baroreceptor feedback
           in normal UNPITHED rat }
-        if rbNormalRat.checked then begin
+        if rbNormalRat.checked then
+           begin
 
            { Basal sympathetic nerve stimulation of blood vessels }
            Drugs[iAlpha1AdrNerves].Dose := Drugs[iAlpha1AdrNerves].Alpha1Adr.Potency*0.4 ;
            Drugs[iBeta1AdrNerves].Dose := Drugs[iBeta1AdrNerves].Beta1Adr.Potency*0.2 ;
 
            { ** Baroreceptor feedback loops (in normal rat only) ** }
-           Drugs[iVagusNerve].Dose := MaxFlt( [Drugs[iVagusNerve].Dose,
-                                               Drugs[iVagusNerve].VagChR.Potency
-                                     * (5.0 / (1.
-                                       + exp(-(Art.MeanPressure-130.0)/8.0)))
-                                     ]) ;
+           Drugs[iVagusNerve].Dose := Max( Drugs[iVagusNerve].Dose,
+                                           Drugs[iVagusNerve].VagChR.Potency
+                                           * (5.0 / (1.+ exp(-(Art.MeanPressure-130.0)/8.0)))
+                                           ) ;
 
            end ;
 
-     { Update drugs in circulation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then begin
-          Drugs[i].Dose := Drugs[i].Dose
-                        + Drugs[i].OnRate*(Drugs[i].DoseInjected - Drugs[i].Dose)
-                        - (Drugs[i].Dose*Drugs[i].RemovalRate) ;
-          Drugs[i].Dose := MaxFlt( [Drugs[i].Dose, 0. ] ) ;
-          Drugs[i].DoseInjected := MaxFlt( [Drugs[i].DoseInjected -
-                                   Drugs[i].DoseInjected*Drugs[i].RemovalRate, 0. ] ) ;
-          end ;
+          { Update drugs in circulation }
+          for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+              begin
+              Drugs[i].Dose := Drugs[i].Dose
+                               + Drugs[i].OnRate*(Drugs[i].DoseInjected - Drugs[i].Dose)
+                               - (Drugs[i].Dose*Drugs[i].RemovalRate) ;
+              Drugs[i].Dose := Max( Drugs[i].Dose, 0. ) ;
+              Drugs[i].DoseInjected := Max( Drugs[i].DoseInjected -
+                                        Drugs[i].DoseInjected*Drugs[i].RemovalRate, 0. ) ;
+              end ;
 
 
-     { Muscarinic cholinoceptor activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         MusChR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].MusChR,
-                   Num,Denom,1.0 ) ;
+         { Muscarinic cholinoceptor activation }
+         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             MusChR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].MusChR,Num,Denom,1.0 ) ;
 
-     { Vagally stimulated muscarinic cholinoceptor activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         VagChR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].VagChR,
-                   Num,Denom,1.0 ) ;
+         { Vagally stimulated muscarinic cholinoceptor activation }
+         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             VagChR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].VagChR,Num,Denom,1.0 ) ;
 
-     { Phosphodiesterase inhibition }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         PDE := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].PDE,
-                                   Num,Denom,1.0 ) ;
+         { Phosphodiesterase inhibition }
+         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             PDE := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].PDE,Num,Denom,1.0 ) ;
 
-     { Alpha1-adrenoceptor activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         Alpha1AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Alpha1AdR,
-                     Num,Denom,1.0 ) ;
+         { Alpha1-adrenoceptor activation }
+         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             Alpha1AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Alpha1AdR,Num,Denom,1.0 ) ;
 
-     { Alpha2-adrenoceptor activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         Alpha2AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Alpha2AdR,
-                     Num,Denom,1.0 ) ;
+         { Alpha2-adrenoceptor activation }
+         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             Alpha2AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Alpha2AdR,Num,Denom,1.0 ) ;
 
+         { Beta1-adrenoceptor activation }
+         PotencyShift := 1.0 - PDE*0.5 ;
+         for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             Beta1AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Beta1AdR,Num,Denom,PotencyShift ) ;
 
-     { Beta1-adrenoceptor activation }
-     PotencyShift := 1.0 - PDE*0.5 ;
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         Beta1AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Beta1AdR,
-                     Num,Denom,PotencyShift ) ;
+        { Beta2-adrenoceptor activation }
+        PotencyShift := 1.0 - PDE*0.5 ;
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            Beta2AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Beta2AdR,
+                        Num,Denom,PotencyShift ) ;
 
-     { Beta2-adrenoceptor activation }
-     PotencyShift := 1.0 - PDE*0.5 ;
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         Beta2AdR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Beta2AdR,
-                     Num,Denom,PotencyShift ) ;
+        { Heart muscle calcium channel activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            HMCaChannels := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].HMCaChannel,Num,Denom,1.0 ) ;
 
-     { Heart muscle calcium channel activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         HMCaChannels := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].HMCaChannel,
-                                            Num,Denom,1.0 ) ;
+        { Digoxin effect on heart muscle }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            DigR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].DigR,Num,Denom,1.0 ) ;
 
-     { Digoxin effect on heart muscle }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         DigR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].DigR,
-                 Num,Denom,1.0 ) ;
+        { Smooth muscle calcium channel activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            SMCaChannels := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].SMCaChannel,Num,Denom,1.0 ) ;
 
-     { Smooth muscle calcium channel activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         SMCaChannels := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].SMCaChannel,
-                                            Num,Denom,1.0 ) ;
+        { Adenosine receptor activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            AdenR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].AdenR,Num,Denom,1.0 ) ;
 
-     { Adenosine receptor activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         AdenR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].AdenR,
-                  Num,Denom,1.0 ) ;
+        { K channel activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            KChannels := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].KChannel,Num,Denom,1.0 ) ;
 
-     { K channel activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         KChannels := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].KChannel,
-                      Num,Denom,1.0 ) ;
+        { Nitric oxide synthase }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+            NOS := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].NOS,Num,Denom,1.0 ) ;
 
-     { Nitric oxide synthase }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         NOS := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].NOS,
-                Num,Denom,1.0 ) ;
+        { Nitric oxide activation }
+        { Note. Intrinsic generation of nitric oxide means that a certain
+          degree of vasodilation exists in the absence of drugs }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             NOX := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].NOX,Num,Denom,1.0 ) ;
 
-     { Nitric oxide activation }
-     { Note. Intrinsic generation of nitric oxide means that a certain
-       degree of vasodilation exists in the absence of drugs }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         NOX := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].NOX,
-                Num,Denom,1.0 ) ;
+         { Angiotensin I activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             Angt1R := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Angt1R,Num,Denom,1.0 ) ;
 
-     { Angiotensin I activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         Angt1R := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Angt1R,
-                   Num,Denom,1.0 ) ;
+         { Angiotensin converting enzyme activity}
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             ACE := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].ACE,Num,Denom,1.0 ) ;
 
+         { Angiotensin II produce from Angiotensin I by angiotensin converting enzyme }
+        Drugs[iAngioTensin2ACE].Dose := Drugs[iAngioTensin2ACE].Angt2R.Potency*5.0
+                                         *( 1.0 - ACE )
+                                         * (Angt1R / ( 1.0 + Angt1R )) ;
 
-     { Angiotensin converting enzyme activity}
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         ACE := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].ACE,
-                Num,Denom,1.0 ) ;
+         { Angiotensin II activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             Angt2R := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Angt2R,Num,Denom,1.0 ) ;
 
+         { Bradykinin receptor activation }
+        for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
+             BradR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].BradR,Num,Denom,1.0 ) ;
 
-     { Angiotensin II produce from Angiotensin I by angiotensin converting enzyme }
-     Drugs[iAngioTensin2ACE].Dose := Drugs[iAngioTensin2ACE].Angt2R.Potency*5.0
-                                  *( 1.0 - ACE )
-                                  * (Angt1R / ( 1.0 + Angt1R )) ;
+         t.next := t.time + 0.005 ;
 
-
-     { Angiotensin II activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         Angt2R := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].Angt2R,
-                                       Num,Denom,1.0 ) ;
-
-     { Bradykinin receptor activation }
-     for i := 0 to High(Drugs) do if Drugs[i] <> Nil then
-         BradR := ReceptorActivation(i,Drugs[i].Dose,Drugs[i].BradR,
-                                       Num,Denom,1.0 ) ;
-
-     t.next := t.time + 0.005 ;
-
-     end ;
+        end ;
 
      Art.Conductance := 5.0*(1.0
                         + (2.5*MusChR*(1.0-NOS))  { Muscarinic receptors VD }
@@ -1140,7 +1232,7 @@ begin
                         - 0.9*Angt2R             { Angiotension II VC }
 
                         );
-     Art.Conductance := MaxFlt([Art.Conductance,0.25]) ;
+     Art.Conductance := Max( Art.Conductance,0.25 ) ;
 
      { Arterial elastance increased by vasoconstrictors
        Results in increased pulse pressure }
@@ -1150,12 +1242,11 @@ begin
 
      { Venous elastance : decreased by certain vasodilators
        Decreased elastance = increased venous capacity }
-     Ven.Elastance := (1./30.0) * ( 1.0 - 0.7*MinFlt([1.0,
+     Ven.Elastance := (1./30.0) * ( 1.0 - 0.7*Min( 1.0,
                       NOX
                       + SMCaCHannels
                       - Alpha1AdR
-                      ]) ) ;
-
+                      ) ) ;
 
      Heart.InitialisePressureRange ;
      Art.InitialisePressureRange ;
@@ -1165,10 +1256,12 @@ begin
      YMax := -1E38 ;
      YMin := 1E38 ;
 
-     for i := 1 to 80 do begin
+     for i := 1 to NumStepsPerDisplayPoint do
+         begin
 
          { Set heart rate and force for next beat}
-         if t.Time >= Heart.NextBeat then begin
+         if t.Time >= Heart.NextBeat then
+            begin
 
             Art.MeanPressure := (Art.MaxPressure - Art.MinPressure)*0.33
                                 + Art.MinPressure ;
@@ -1183,7 +1276,7 @@ begin
                                         + Beta1AdR
                                         - HMCaChannels
                                         + 1.0*PDE ) ;
-            Heart.Rate := MaxFlt( [Heart.Rate, 1.] ) ;
+            Heart.Rate := Max( Heart.Rate, 1.0 ) ;
 
             { Contractile force }
             Heart.Force :=  8.0 * (1.0
@@ -1206,7 +1299,8 @@ begin
 
             end ;
 
-         if Heart.Time > 0.0 then begin
+         if Heart.Time > 0.0 then
+           begin
 
            { Compute cardiac contractile force }
            TMid := t.step*Round((Heart.TSystole*0.5)/t.step) ;
@@ -1223,7 +1317,8 @@ begin
            Heart.Time := Heart.Time - t.Step ;
            end ;
 
-         if DigR > 0.95 then begin
+         if DigR > 0.95 then
+            begin
             Heart.Elastance := Heart.Force*AddNoise(0.5)*0.25 ;
             Fibrillation := Fibrillation + t.step ;
             Heart.Rate := 300.0*AddNoise(0.5) ;
@@ -1236,11 +1331,9 @@ begin
          YMin := Min(Ymin,Heart.Elastance) ;
 
          { Arterial valve }
-         if (Heart.Pressure >= Art.Pressure)
-            and (Fibrillation <= 0.0) then begin
-
+         if (Heart.Pressure >= Art.Pressure) and (Fibrillation <= 0.0) then
+            begin
             Heart.Flow := (Heart.Pressure - Art.Pressure)*Heart.Conductance ;
-
             Art.Volume := Art.Volume + Heart.Flow*t.step ;
             Heart.Volume := Heart.Volume - Heart.Flow*t.step ;
             end ;
@@ -1248,8 +1341,8 @@ begin
          Art.Pressure := Pressure(Art) ;
 
          { Find Systolic/Diastolic pressures }
-         Art.MaxPressure := MaxFlt([Art.MaxPressure,Art.Pressure]) ;
-         Art.MinPressure := MinFlt([Art.MinPressure,Art.Pressure]) ;
+         Art.MaxPressure := Max(Art.MaxPressure,Art.Pressure) ;
+         Art.MinPressure := Min(Art.MinPressure,Art.Pressure) ;
 
          Art.Flow := (Art.Pressure - Ven.Pressure)*Art.Conductance ;
          Ven.Volume := Ven.Volume + Art.Flow*t.step ;
@@ -1257,8 +1350,8 @@ begin
 
          Ven.Pressure := Pressure(Ven) ;
          { Venous system -> heart valve }
-         if (Ven.Pressure >= Heart.Pressure)
-            and (Fibrillation <= 0.0)then begin
+         if (Ven.Pressure >= Heart.Pressure) and (Fibrillation <= 0.0)then
+            begin
             Ven.Flow := (Ven.Pressure - Heart.Pressure)*Ven.Conductance ;
             Heart.Volume := Heart.Volume + Ven.Flow*t.step ;
             Ven.Volume := Ven.Volume - Ven.Flow*t.step ;
@@ -1275,58 +1368,100 @@ begin
 
 
      { The rat dies if the B.P. falls too low for too long }
-     if not Dead  then begin
+     if not Dead  then
+        begin
         if Art.Pressure < 20. then Inc(Dying)
                                else Dying := 0 ;
-        if Dying = 500 then begin
-           j := pbDisplay.font.size ;
-           pbDisplay.canvas.font.size := 32 ;
-           pbDisplay.canvas.font.Color := clRed ;
-           pbDisplay.canvas.TextOut( pbDisplay.Width div 4,
-                                     pbDisplay.Height div 2,
-                                     'Your rat has just died!!!' ) ;
-           pbDisplay.canvas.font.size := j ;
+        if Dying = 500 then
+           begin
+           AddDrugMarker('Your rat has died!!!');
            Dead := True ;
            end ;
-        end
-     else begin
         end ;
 
-     Inc(BufPointer) ;
-     j := BufPointer*NumChannels ;
-     Buf[j+chLVP] := Heart.GetLeadingPressure ;
-     Buf[j+chABP] := Art.GetLeadingPressure ;
-     Buf[j+ChCVP] := Ven.GetLeadingPressure ;
-     Buf[j+ChHCF] := Con.GetLeadingPressure ;
+     j := NumPointsInBuf*scDisplay.NumChannels ;
+     Inc(NumPointsInBuf) ;
 
-     Buf[j+chHR] := Heart.Rate*AddNoise(0.05) ;
-     Buf[j+chMarker] := Marker.Index ;
-     Marker.Index := -1. ; ;
-     Buf[j+chMarkerValue] := Marker.Value ;
-     Buf[j+ChMarkerUnits] := Marker.Units ;
+     ADC[j+chLVP] := Round( Heart.GetLeadingPressure/scDisplay.ChanScale[chLVP]);
+     ADC[j+chABP] := Round( Art.GetLeadingPressure/scDisplay.ChanScale[chABP]);
+     ADC[j+ChCVP] := Round( Ven.GetLeadingPressure/scDisplay.ChanScale[chCVP]);
+     ADC[j+ChHCF] := Round( Con.GetLeadingPressure/scDisplay.ChanScale[chHCF]);
+     ADC[j+chHR] := Round( (Heart.Rate*AddNoise(0.05))/scDisplay.ChanScale[chHR]);
 
-     Inc(BufPointer) ;
-     j := BufPointer*NumChannels ;
-     Buf[j+chLVP] := Heart.GetTrailingPressure ;
-     Buf[j+chABP] := Art.GetTrailingPressure ;
-     Buf[j+ChCVP] := Ven.GetTrailingPressure ;
-     Buf[j+ChHCF] := Con.GetTrailingPressure ;
-     Buf[j+chHR] := Heart.Rate  ;
-     Buf[j+chMarker] := Marker.Index ;
-     Marker.Index := -1. ;
-     Buf[j+chMarkerValue] := Marker.Value ;
-     Buf[j+ChMarkerUnits] := Marker.Units ;
+     j := NumPointsInBuf*scDisplay.NumChannels ;
+     Inc(NumPointsInBuf) ;
+     ADC[j+chLVP] := Round( Heart.GetTrailingPressure/scDisplay.ChanScale[chLVP]);
+     ADC[j+chABP] := Round( Art.GetTrailingPressure/scDisplay.ChanScale[chABP]);
+     ADC[j+ChCVP] := Round( Ven.GetTrailingPressure/scDisplay.ChanScale[chCVP]);
+     ADC[j+ChHCF] := Round( Con.GetTrailingPressure/scDisplay.ChanScale[chHCF]);
+     ADC[j+chHR] := Round( Heart.Rate/scDisplay.ChanScale[chHR]);
+
+     // Ensure trace does not exceed display range
+     for ch := 0 to scDisplay.NumChannels-1 do
+         if ADC[j+ch] > scDisplay.Ymax[ch] then scDisplay.Ymax[ch] := scDisplay.Ymax[ch]*1.1 ;
+
+
      end ;
+
+
+procedure TMainForm.cbAgonistChange(Sender: TObject);
+// ==============================
+// Agonist drug selection changed
+// ==============================
+begin
+    SetDoseList( cbAgonist, cbAgonistDose ) ;
+end;
+
+
+procedure TMainForm.cbAntagonistChange(Sender: TObject);
+// ==============================
+// Antaonist drug selection changed
+// ==============================
+begin
+    SetDoseList( cbAntagonist, cbAntagonistDose ) ;
+end;
+
+
+procedure TMainForm.cbUnknownChange(Sender: TObject);
+// ==============================
+// Unknown drug selection changed
+// ==============================
+begin
+    SetDoseList( cbUnknown, cbUnknownDose ) ;
+end;
+
+
+procedure TMainForm.edStartTimeKeyPress(Sender: TObject; var Key: Char);
+// ------------------
+// Start time changed
+// ------------------
+begin
+    if Key = #13 then
+       begin
+       sbDisplay.Position := Round(edStartTime.Value) ;
+       end;
+    end;
+
+
+procedure TMainForm.edTDisplayKeyPress(Sender: TObject; var Key: Char);
+// -------------------------------
+// Display window duration changed
+// -------------------------------
+begin
+    if Key = #13 then UpdateDisplayDuration ;
+    end;
 
 
 procedure TElement.CalculatePressureRange( t : single ) ;
 begin
-     if Pressure <= PressureLo then begin
+     if Pressure <= PressureLo then
+        begin
         PressureLo := Pressure ;
         TLo := t ;
         end ;
 
-     if Pressure >= PressureHi then begin
+     if Pressure >= PressureHi then
+        begin
         PressureHi := Pressure ;
         THi := t ;
         end ;
@@ -1351,291 +1486,7 @@ begin
      end ;
 
 
-function FindDrug(
-         DrugList : Array of TDrug ;
-         DrugName : string ) : Integer ;
-{ ---------------------------------------------------------------------
-  Return the array index of the drug in DrugList with the name DrugName
-  ---------------------------------------------------------------------}
-var
-   Found : Boolean ;
-   i : Integer ;
-   Temp : string ;
-begin
-
-     // Remove & from name
-     Temp := DrugName ;
-     DrugName := '' ;
-     for i:= 1 to Length(Temp) do
-         if Temp[i] <> '&' then DrugName := DrugName + Temp[i] ;
-
-     i := 0 ;
-     Found := False ;
-     while (not Found) and (i <= High(DrugList)) do begin
-         if Pos(DrugName,DrugList[i].Name) > 0 then Found := True
-                                               else Inc(i) ;
-         end ;
-     if Found then Result := i
-              else begin
-                   Result := -1 ;
-                   MessageDlg( DrugName + ' not available.',mtWarning,[mbOK], 0 ) ;
-                   end ;
-     end ;
-
-
-procedure TMainForm.TimerTimer(Sender: TObject);
-{ ----------------------------------------------------
-  Timed event scheduler ... does simulation time steps
-  ----------------------------------------------------}
-var
-   xPix,yPix,ch,j,jTo,jFrom0,jFrom1,nw : LongInt ;
-begin
-     case State of
-
-          { Create simulated cat experiment traces }
-          Recording : Begin
-
-             { Calculate next set of simulation values }
-             CalculateTrace ;
-
-             { Plot results on chart traces }
-             xPix := Trunc( (BufPointer - Channel[0].xMin)*Channel[0].xScale )
-                     + Channel[0].Left ;
-
-             for ch := 0 to chMarker do if Channel[ch].InUse then begin
-                 j := (BufPointer-1)*NumChannels + ch ;
-                 yPix := Channel[ch].Bottom -
-                         Trunc( (Buf[j]-Channel[ch].yMin)*Channel[ch].yScale ) ;
-                 pbDisplay.canvas.pen.color := Channel[ch].color ;
-                 { If no information about previous position ... used current }
-                 if OldPos[ch].x = 0 then OldPos[ch] := Point( xPix, yPix ) ;
-                 pbDisplay.canvas.MoveTo( OldPos[ch].x, OldPos[ch].y ) ;
-
-                 pbDisplay.canvas.LineTo( xPix, yPix ) ;
-
-                 j := (BufPointer)*NumChannels + ch ;
-                 yPix := Channel[ch].Bottom -
-                         Trunc( (Buf[j]-Channel[ch].yMin)*Channel[ch].yScale ) ;
-                 pbDisplay.canvas.LineTo( xPix, yPix ) ;
-
-                 OldPos[ch] := Point( xPix, yPix ) ;
-                 end ;
-
-             { Display marker at bottom of screen }
-             j := (BufPointer-1)*NumChannels  ;
-             if Buf[j+chMarker] <> None then begin
-                yPix := pbDisplay.Height - pbDisplay.canvas.TextHeight('X') ;
-                { Draw tic indicating point of drug application }
-                pbDisplay.canvas.MoveTo( xPix, yPix ) ;
-                pbDisplay.canvas.LineTo( xPix, yPix + pbDisplay.canvas.TextHeight('X')) ;
-                if Buf[j+ChMarkerValue] <> 0.0 then
-                     pbDisplay.canvas.TextOut( xPix + 2,yPix,
-                                  Drugs[Trunc(Buf[j+ChMarker])].ShortName +
-                                  format(' %.3g %s',[Buf[j+ChMarkerValue],
-                                  MarkerUnits[Trunc(Buf[j+ChMarkerUnits])]])
-                                   )
-                else
-                     pbDisplay.canvas.TextOut( xPix + 2,yPix,
-                                  Drugs[Trunc(Buf[j+ChMarker])].ShortName ) ;
-
-                end ;
-
-             { Write results to file }
-             j := (BufPointer-1)*NumChannels ;
-             for ch := 0 to ((2*NumChannels)-1) do begin
-                 FileBuf[FileBufPointer] := Buf[j+ch] ;
-                 Inc(FileBufPointer) ;
-                 end ;
-             if FileBufPointer > EndofFileBuf then begin
-                nw := FileWrite( FileHandle, FileBuf, Sizeof(FileBuf) ) ;
-                FileBufPointer := 0 ;
-                end ;
-
-             t.time := t.time + t.Step ;
-
-             { If at end of display ... refresh display retaining last 25% of traces }
-             if BufPointer >= EndofBuf then begin
-                jTo := 0 ;
-                jFrom0 := LastQuarter*NumChannels ;
-                jFrom1 := (EndOfBuf+1)*NumChannels -1  ;
-                for j := jFrom0 to jFrom1 do begin
-                    Buf[jTo] := Buf[j] ;
-                    Inc(jTo) ;
-                    end ;
-                BufPointer := FirstQuarter ;
-                InitializeDisplay ;
-                end ;
-             end ;
-
-          Replay : begin
-                 { Replay recorded traces }
-                 FilePointer := SizeOf(FileBuf)  ;
-                 FilePointer := FilePointer*sbRecord.position ;
-                 nw := FileSeek( FileHandle, FilePointer, 0 ) ;
-                 nw := FileRead( FileHandle,Buf,Sizeof(Buf)) ;
-                 BufPointer := ((nw) div (4*NumChannels)) - 1 ;
-                 InitializeDisplay ;
-                 State := Idle ;
-                 end ;
-          end ;
-     end;
-
-
-procedure TMainForm.InitializeDisplay ;
-{ ----------------------------
-  Initialise a display window
-  ---------------------------}
-var
-   Height,ch,cTop,xPix,yPix,yPixTop,yPixBottom,i,j,n : LongInt ;
-   x,y,xStep : single ;
-   Lab : string ;
-begin
-
-     { Erase display }
-     pbDisplay.canvas.brush.color := clWhite ;
-     pbDisplay.canvas.fillrect(pbDisplay.canvas.ClipRect);
-
-     { Determine number of channels in use }
-     n := 0 ;
-     for ch := 0 to ChMarker-1 do begin
-         if (Channel[Ch].InUse) then Inc(n) ;
-         end ;
-     if n <= 0 then n := 1 ;
-     Height := (pbDisplay.Height - 2*pbDisplay.canvas.TextHeight('X') ) div n ;
-
-     { Display Min./Max. range and channel name }
-
-     for ch := 0 to chMarker-1 do begin
-         if Channel[ch].InUse then begin
-            { Maximum value }
-            Channel[ch].Left := pbDisplay.Canvas.TextWidth('X')*6 ;
-            Lab := format('%d',[Trunc(Channel[ch].yMax)]) ;
-            pbDisplay.canvas.TextOut( Channel[ch].Left - pbDisplay.Canvas.TextWidth(Lab)
-                                      - pbDisplay.Canvas.TextWidth('X') div 2,
-                                      Channel[ch].Top,
-                                      Lab) ;
-            { Minimum value }
-            Lab := '0' ;
-            pbDisplay.canvas.TextOut( Channel[ch].Left - pbDisplay.Canvas.TextWidth(Lab)
-                                      - pbDisplay.Canvas.TextWidth('X') div 2,
-                                      Channel[ch].Bottom - pbDisplay.Canvas.TextHeight('X'),
-                                      Lab ) ;
-
-            { Channel name }
-            Lab := Channel[ch].ADCName ;
-            pbDisplay.canvas.font.color := Channel[ch].color ;
-            pbDisplay.Canvas.TextOut( Channel[ch].Left - pbDisplay.Canvas.TextWidth(Lab)
-                                      - pbDisplay.Canvas.TextWidth('X') div 2,
-                                      Channel[ch].Top + pbDisplay.Canvas.TextHeight('X'),
-                                      Lab ) ;
-            pbDisplay.canvas.font.color := clBlack ;
-            end ;
-         end ;
-
-     { Define display area for each channel }
-     cTop := pbDisplay.canvas.TextHeight('X') ;
-     for i := 0 to ChMarker-1 do begin
-         if Channel[i].InUse then begin
-            //Channel[i].Left := 0 ;
-            Channel[i].Right := pbDisplay.width - 5 ;
-            Channel[i].Top := cTop ;
-            Channel[i].Bottom := Channel[i].Top + Height
-                                  - (pbDisplay.canvas.TextHeight('X') div 2);
-            Channel[i].xMin := Channel[0].xMin ;
-            Channel[i].xMax := Channel[0].xMax ;
-            Channel[i].xScale := (Channel[i].Right - Channel[i].Left) /
-                            (Channel[i].xMax - Channel[i].xMin ) ;
-            Channel[i].yScale := (Channel[i].Bottom - Channel[i].Top) /
-                            (Channel[i].yMax - Channel[i].yMin ) ;
-            cTop := cTop + Height ;
-            end ;
-         end ;
-
-     { Draw grid }
-     for ch := 0 to chMarker-1 do begin
-         if Channel[ch].InUse  then begin
-            { Grid colour }
-            pbDisplay.canvas.pen.color := clGray ;
-            { Horizontal grid }
-            y := 0. ;
-            pbDisplay.Canvas.Pen.Width := 2 ;
-            while y <= (Channel[ch].yMax ) do begin
-                  yPix := Channel[ch].bottom -
-                          Trunc( (y-Channel[ch].yMin)*Channel[ch].yScale ) ;
-                  pbDisplay.canvas.Polyline( [Point(Channel[ch].Left, yPix),
-                                              Point(Channel[ch].Right, yPix) ]) ;
-                  y := y + Channel[ch].yCal ;
-                  pbDisplay.Canvas.Pen.Width := 1 ;
-                  end ;
-
-            { Vertical grid lines }
-            x := (Channel[0].xMax - Channel[0].xMin) / 10. ;
-            yPixTop := Channel[ch].bottom -
-                          Trunc((Channel[ch].yMax -Channel[ch].yMin)
-                          *Channel[ch].yScale ) ;
-            yPixBottom := Channel[ch].bottom -
-                          Trunc((-Channel[ch].yMin)*Channel[ch].yScale ) ;
-            xStep := x ;
-            while x < Channel[0].xMax do begin
-                  xPix := Trunc( (x - Channel[0].xMin)*Channel[0].xScale )
-                          + Channel[0].Left ;
-                  pbDisplay.canvas.Polyline( [Point(xPix, yPixTop),
-                                              Point(xPix, yPixBottom)]) ;
-                  x := x + xStep ;
-                  end ;
-
-            end ;
-         end ;
-
-     pbDisplay.canvas.pen.style := psSolid ;
-
-     { Draw channels }
-     for ch := 0 to chMarker-1 do begin
-         if Channel[ch].InUse then begin
-            pbDisplay.canvas.pen.color := Channel[ch].color ;
-            for i := 0 to BufPointer do begin
-                if (i mod 2) = 0 then begin
-                   xPix := Trunc( (i - Channel[0].xMin)*Channel[0].xScale )
-                           + Channel[0].Left ;
-                   end ;
-                j := i*NumChannels + ch ;
-                yPix := Channel[ch].Bottom -
-                        Trunc( (Buf[j]-Channel[ch].yMin)*Channel[ch].yScale ) ;
-                if i = 0 then pbDisplay.canvas.MoveTo( xPix, yPix )
-                         else pbDisplay.canvas.LineTo( xPix, yPix ) ;
-                end ;
-            if BufPointer >= 0 then OldPos[ch] := Point(xPix,yPix)
-                               else OldPos[ch] := Point( 0,0 ) ;
-            end ;
-         end ;
-
-     { Display markers }
-     for i := 0 to Bufpointer do begin
-         j := i*NumChannels  ;
-         if Buf[j + chMarker] <> None then begin
-            xPix := Trunc( (i - Channel[0].xMin)*Channel[0].xScale )
-                    + Channel[0].Left ;
-            yPix := pbDisplay.Height - pbDisplay.canvas.TextHeight('X') ;
-            { Draw tic indicating point of drug application }
-            pbDisplay.canvas.MoveTo( xPix, yPix ) ;
-            pbDisplay.canvas.LineTo( xPix, yPix + pbDisplay.canvas.TextHeight('X')) ;
-
-            if Buf[j+ChMarkerValue] <> 0.0 then
-               pbDisplay.canvas.TextOut( xPix+2,yPix,
-                                      Drugs[Trunc(Buf[j+ChMarker])].ShortName +
-                                      format(' %.3g %s',[Buf[j+ChMarkerValue],
-                                      MarkerUnits[Trunc(Buf[j+ChMarkerUnits])]]) )
-            else
-               pbDisplay.canvas.TextOut( xPix+2,yPix,
-                                      Drugs[Trunc(Buf[j+ChMarker])].ShortName ) ;
-            end ;
-         end ;
-
-     Initialized := True ;
-     end ;
-
-
-function Pressure( Element : TElement ) : single ;
+function TMainForm.Pressure( Element : TElement ) : single ;
 var
    P : Single ;
 begin
@@ -1645,243 +1496,7 @@ begin
      end ;
 
 
-procedure TMainForm.PrintTraces ;
-{ ------------------------------------
-  Print hard copy of traces on screen
-  -----------------------------------}
-var
-   LineSpace,ChanHeight,n,CTop,ch,i,j :LongInt ;
-   TopMargin,BottomMargin,LeftMargin,RightMargin : LongInt ;
-   x,xStep,y : single ;
-   xPix,yPix,yPixTop,yPixBottom : LongInt ;
-   PrChan : Array[0..ChannelLimit] of TChannel ;
-   Lab : string ;
-begin
-     SetPageFrm.ShowModal ;
-     if SetPageFrm.ModalResult = mrOK then begin
-
-        screen.cursor := crHourGlass ;
-        Printer.BeginDoc ;
-
-        TopMargin := PrinterCMToPixels('V',
-                     ExtractFloat(SetPageFrm.edTopMargin.text,5.0)) ;
-        BottomMargin := PrinterCMToPixels('V',
-                        ExtractFloat(SetPageFrm.edBottomMargin.text,5.0)) ;
-        LeftMargin := PrinterCMToPixels('H',
-                      ExtractFloat(SetPageFrm.edLeftMargin.text,5.0)) ;
-        RightMargin := PrinterCMToPixels('H',
-                       ExtractFloat(SetPageFrm.edRightMargin.text,5.0)) ;
-
-        { Set printer typeface and size }
-        Printer.canvas.font.name := 'Arial'  ;
-        Printer.canvas.font.Size := 10 ;
-        LineSpace := printer.canvas.textheight( 'X' ) ;
-        { Print user name at top of page }
-        Printer.canvas.font.Size := 10 ;
-        LineSpace := printer.canvas.TextHeight('X') ;
-        xPix := PrinterCMToPixels('H',2.5) ;
-        yPix := PrinterCMToPixels('V',1.0) ;
-        Printer.Canvas.TextOut( xPix,
-                                yPix,
-                                'User: ' + AboutFrm.edName.text
-                                ) ;
-        yPix := yPix + LineSpace ;
-        Printer.Canvas.TextOut( xPix,
-                                yPix,
-                                'File: ' + FileName) ;
-        yPix := yPix + LineSpace ;
-        if rbPithedrat.Checked then
-           Printer.Canvas.TextOut( xPix,yPix,'Experiment : Pithed')
-        else
-           Printer.Canvas.TextOut( xPix,yPix,'Experiment : Normal') ;
-
-
-
-        { Set up printer page scaling }
-        n := 0 ;
-        for ch := 0 to ChMarker-1 do if (Channel[ch].InUse)  then Inc(n) ;
-        if n < 1 then n := 1 ;
-
-        { Set position on page and scaling factor for each channel }
-        ChanHeight := ((Printer.PageHeight - TopMargin - BottomMargin) div n) ;
-
-        CTop := TopMargin ;
-        for ch := 0 to ChMarker-1 do begin
-            PrChan[ch] := Channel[ch] ;
-            if PrChan[ch].InUse then begin
-               PrChan[ch].Left := LeftMargin ;
-               PrChan[ch].Right := Printer.PageWidth - RightMargin ;
-               PrChan[ch].Top := CTop ;
-               PrChan[ch].Bottom := PrChan[ch].Top + ChanHeight
-                                    - PrinterCMToPixels('V',0.5) ;
-               PrChan[ch].xScale := (PrChan[ch].Right - PrChan[ch].Left) /
-                                    (PrChan[ch].xMax  - PrChan[ch].xMin ) ;
-               PrChan[ch].yScale := (PrChan[ch].Bottom - PrChan[ch].Top) /
-                                    (PrChan[ch].yMax   - PrChan[ch].yMin ) ;
-               CTop := CTop + ChanHeight ;
-               { Copy channel settings to Marker channel to ensure that
-                 there is a correct set of X axis scaling factors in it
-                 (any channel will do) 30/10/97 }
-               PrChan[chMarker] := PrChan[ch] ;
-               end ;
-            end ;
-
-        { Display Min./Max. range and channel name }
-        Printer.canvas.font.Size := 10 ;
-        for ch := 0 to chMarker-1 do if PrChan[ch].InUse  then begin
-            { Maximum value }
-            PrChan[ch].Left := PrChan[ch].Left + printer.Canvas.TextWidth('X')*4 ;
-            PrChan[ch].xScale := (PrChan[ch].Right - PrChan[ch].Left) /
-                                 (PrChan[ch].xMax  - PrChan[ch].xMin ) ;
-
-            Lab := format('%d',[Trunc(PrChan[ch].yMax)]) ;
-            printer.canvas.TextOut( PrChan[ch].Left - printer.Canvas.TextWidth(Lab)
-                                   - printer.Canvas.TextWidth('X') div 2,
-                                   PrChan[ch].Top,
-                                   Lab) ;
-            { Minimum value }
-            Lab := '0' ;
-            printer.canvas.TextOut( PrChan[ch].Left - printer.Canvas.TextWidth(Lab)
-                                   - printer.Canvas.TextWidth('X') div 2,
-                                   PrChan[ch].Bottom - printer.Canvas.TextHeight('X'),
-                                   Lab ) ;
-
-            { PrChan name }
-            Lab := PrChan[ch].ADCName ;
-            printer.Canvas.TextOut( PrChan[ch].Left - printer.Canvas.TextWidth(Lab)
-                                   - printer.Canvas.TextWidth('X') div 2,
-                                   PrChan[ch].Top + printer.Canvas.TextHeight('X'),
-                                   Lab ) ;
-
-            end ;
-
-
-        { Draw grid }
-        for ch := 0 to chMarker-1 do if PrChan[ch].InUse  then begin
-            { Grid line style }
-            Printer.canvas.pen.style := psDot ;
-
-            { Horizontal grid }
-            y := 0. ;
-            while y <= (PrChan[ch].yMax ) do begin
-                  yPix := PrChan[ch].bottom -
-                          Trunc( (y-PrChan[ch].yMin)*PrChan[ch].yScale ) ;
-                  Printer.canvas.Polyline( [Point(PrChan[ch].Left, yPix),
-                                            Point(PrChan[ch].Right, yPix) ]) ;
-                  y := y + Channel[ch].yCal ;
-                  end ;
-
-            { Vertical grid lines }
-            x := (PrChan[ch].xMax - PrChan[ch].xMin) / 10. ;
-            yPixTop := PrChan[ch].bottom -
-                       Trunc((PrChan[ch].yMax  -PrChan[ch].yMin)
-                       *PrChan[ch].yScale ) ;
-            yPixBottom := PrChan[ch].bottom -
-                          Trunc((-PrChan[ch].yMin)*PrChan[ch].yScale ) ;
-            xStep := x ;
-            while x < PrChan[ch].xMax do begin
-                  xPix := Trunc( (x - PrChan[ch].xMin)*PrChan[ch].xScale )
-                          + PrChan[ch].Left ;
-                  Printer.canvas.Polyline( [Point(xPix, yPixTop),
-                                              Point(xPix, yPixBottom)]) ;
-                  x := x + xStep ;
-                  end ;
-            end ;
-
-        Printer.canvas.pen.style := psSolid ;
-
-        { Draw channels traces}
-        for ch := 0 to chMarker-1 do if PrChan[ch].InUse then begin
-            for i := 0 to BufPointer do begin
-                xPix := Trunc( (i - PrChan[ch].xMin)*PrChan[ch].xScale )
-                        + PrChan[ch].Left ;
-                j := i*NumChannels + ch ;
-                yPix := PrChan[ch].Bottom - Trunc( Buf[j]*PrChan[ch].yScale ) ;
-                if i = 0 then Printer.canvas.MoveTo( xPix, yPix )
-                         else Printer.canvas.LineTo( xPix, yPix ) ;
-                end ;
-            end ;
-
-        { Display markers }
-        Printer.canvas.font.height := PrinterPointsToPixels(8) ;
-        for ch := 0 to chMarker-1 do
-            if PrChan[ch].InUse then PrChan[chMarker] := PrChan[ch] ;
-
-        for i := 0 to Bufpointer do begin
-            j := i*NumChannels ;
-            if Buf[j + chMarker] <> None then begin
-               { Calculate point of drug application on trace }
-               xPix := Trunc( (i - PrChan[chMarker].xMin)*PrChan[chMarker].xScale )
-                       + PrChan[chMarker].Left ;
-               yPix := (Printer.PageHeight - BottomMargin) ;
-               { Draw tic indicating point of drug application }
-               Printer.Canvas.MoveTo( xPix, yPix ) ;
-               Printer.Canvas.LineTo( xPix, yPix + Printer.Canvas.TextHeight('X')) ;
-               xPix := xPix + (Printer.Canvas.TextWidth('X') div 4) ;
-               { Display drug/dose information }
-               if Buf[j+ChMarkerValue] <> 0.0 then
-                  Printer.canvas.TextOut( xPix ,yPix,
-                                          Drugs[Trunc(Buf[j+ChMarker])].ShortName +
-                                          format(' %.4g %s',[Buf[j+ChMarkerValue],
-                                          MarkerUnits[Trunc(Buf[j+ChMarkerUnits])]]) )
-               else
-                  Printer.canvas.TextOut( xPix,yPix,
-                                    Drugs[Trunc(Buf[j+ChMarker])].ShortName ) ;               end ;
-            end ;
-
-        Printer.canvas.font.Size := 8 ;
-        LineSpace := printer.canvas.TextHeight('X') ;
-        Printer.Canvas.TextOut( PrinterCMToPixels('H',2.5),
-                                Printer.PageHeight - PrinterCMToPixels('V',1.0),
-                                ProgName + ' ' + DateTimeToStr(Now) ) ;
-
-        Printer.EndDoc ;
-        screen.cursor := crDefault ;
-        end ;
-
-    end ;
-
-
-
-function MaxFlt( const Buf : array of Single ) : Single ;
-{ Return the largest value in the array 'Buf' }
-var
-   i : LongInt ;
-   Max : Single ;
-begin
-     Max:= -1E38 ;
-     for i := 0 to High(Buf) do
-         if Buf[i] > Max then Max := Buf[i] ;
-     Result := Max ;
-     end ;
-
-function MinFlt( const Buf : array of Single ) : Single ;
-{ Return the largest value in the array 'Buf' }
-var
-   i : LongInt ;
-   Min : Single ;
-begin
-     Min:= 1E38 ;
-     for i := 0 to High(Buf) do
-         if Buf[i] < Min then Min := Buf[i] ;
-     Result := Min ;
-     end ;
-
-
-
-function MaxInt( const Buf : array of Integer ) : Integer ;
-{ Return the largest value in the array 'Buf' }
-var
-   i,Max : Integer ;
-begin
-     Max:= Low(Max) ;
-     for i := 0 to High(Buf) do
-         if Buf[i] > Max then Max := Buf[i] ;
-     Result := Max ;
-     end ;
-
-
-function AddNoise(
+function TMainForm.AddNoise(
          Proportion : single
          ) : single ;
 { -----------------------------------------------
@@ -1892,7 +1507,7 @@ begin
      end ;
 
 
-Procedure UpdateCirculatingDrug
+Procedure TMainForm.UpdateCirculatingDrug
           ( var Drug : TDrug
           ) ;
 { -------------------------------------------
@@ -1901,19 +1516,13 @@ Procedure UpdateCirculatingDrug
 begin
      Drug.Dose := Drug.Dose + Drug.OnRate*(Drug.DoseInjected - Drug.Dose)
                             - (Drug.Dose*Drug.RemovalRate);
-     Drug.Dose := MaxFlt( [Drug.Dose, 0. ] ) ;
-     Drug.DoseInjected := MaxFlt( [Drug.DoseInjected -
-                                   Drug.DoseInjected*Drug.RemovalRate, 0. ] ) ;
+     Drug.Dose := Max( Drug.Dose, 0.  ) ;
+     Drug.DoseInjected := Max( Drug.DoseInjected -
+                               Drug.DoseInjected*Drug.RemovalRate, 0. ) ;
      end ;
 
 
-procedure TMainForm.pbDisplayPaint(Sender: TObject);
-begin
-     InitializeDisplay ;
-     end;
-
-
-function ExtractFloat ( CBuf : string ; Default : Single ) : extended ;
+function TMainForm.ExtractFloat ( CBuf : string ; Default : Single ) : extended ;
 { ---------------------------------------------------
   Extract a floating point number from a string which
   may contain additional non-numeric text
@@ -1937,129 +1546,277 @@ begin
      end ;
 
 
-procedure TMainForm.mnAdrenalineClick(Sender: TObject);
-var
-   ix : Integer ;
-begin
-     { Find drug to be added }
-     AddDose.lbDrugName.caption := TMenuItem(Sender).Caption ;
-     ix := FindDrug( Drugs, TMenuItem(Sender).Caption ) ;
-     { Determine min/max dose range allowed }
-     AddDose.MinDose := Drugs[ix].MinDose ;
-     AddDose.MaxDose := Drugs[ix].MaxDose ;
-     { Let user set dose }
-
-
-     AddDose.ShowModal ;
-
-     if AddDose.ModalResult = mrOK then begin
-        if ix >= 0 then begin
-           Drugs[ix].DoseInjected := AddDose.SelectedDose*AddNoise(0.1) ;
-           Marker.Index := ix ;
-           Marker.Value := AddDose.SelectedDose*AddDose.Scale ;
-           if AddDose.Scale <> 1.0 then Marker.Units := ugUnits
-                                   else Marker.Units := mgUnits ;
-           end ;
-        end ;
-     end;
-
-
 procedure TMainForm.FormResize(Sender: TObject);
+// ----------------------------------------
+// Resize form components when size changed
+// ----------------------------------------
 var
    MinHeight,MinWidth : Integer ;
 begin
-     MinWidth := ControlGrp.Width + 20 ;
-     MinHeight := ControlGrp.Height + 100 ;
+     MinWidth := TDisplayPanel.Width + 20 ;
+     MinHeight := TDisplayPanel.Height + 100 ;
      if ClientHeight < MinHeight then ClientHeight := Minheight ;
      if ClientWidth < MinWidth then ClientWidth := MinWidth ;
 
      Page.Width := ClientWidth - Page.Left - 5 ;
      Page.Height := ClientHeight - Page.Top - 5 ;
 
-     ControlGrp.Top := ChartTab.ClientHeight - ControlGrp.Height - 10 ;
-     pbDisplay.Height := ControlGrp.Top - pbDisplay.Top - 10 ;
-     pbDisplay.Width := ChartTab.CLientWidth - pbDisplay.Left - 10 ;
+     TDisplayPanel.Top := ChartTab.ClientHeight - TDisplayPanel.Height - 10 ;
+     TDisplayPanel.Width := ChartTab.ClientWidth - TDisplayPanel.Left - 10 ;
+     bTDisplayDouble.Left := TDisplayPanel.ClientWidth - bTDisplayDouble.Width ;
+     edTDisplay.Left := bTDisplayDouble.Left - edTDisplay.Width - 5 ;
+     bTDisplayHalf.Left := EdTDisplay.Left - bTDisplayHalf.Width - 5;
+     lbTDisplay.Left := bTDisplayHalf.Left - lbTDisplay.Width - 5 ;
+     sbDisplay.Width := lbTDisplay.Left - sbDisplay.Left - 5 ;
+
+     scDisplay.Height := TDisplayPanel.Top - scDisplay.Top - 10 ;
+     scDisplay.Width := ChartTab.CLientWidth - scDisplay.Left - 10 ;
 
      ExpImage.Width := Max(Round(PictureTab.ClientWidth*0.9),465) ;
      ExpImage.Height :=  Max(Round(ExpImage.Width*(329.0/465.0)),329) ;
      ExpImage.Left := (PictureTab.ClientWidth - ExpImage.Width) div 2 ;
      ExpImage.Top := (PictureTab.ClientHeight - ExpImage.Height) div 2 ;
 
-     // Ensures update of paintbox size
-     Application.ProcessMessages ;
-
-     pbDisplay.Invalidate ;
-
      end;
 
 
 procedure TMainForm.bStopClick(Sender: TObject);
-var
-   nBufs,FileLength : LongInt ;
+// --------------------
+// Stop chart recording
+// --------------------
 begin
-     State := Replay ;
-     FileLength := FileSeek( FileHandle, 0, 2 ) ;
-     nBufs := FileLength div SizeOf(FileBuf) ;
-     sbRecord.Max :=MaxInt( [nBufs-1,1] ) ;
-     sbRecord.Min := 0 ;
+
+     sbDisplay.Max := NumPointsInBuf - 1 ;
      bStart.Enabled := True ;
      bStop.Enabled := False ;
      mnFile.Enabled := True ;
-     //if FileLength > 0 then sbRecord.Enabled := True
+
      end;
 
-procedure TMainForm.sbRecordChange(Sender: TObject);
+
+procedure TMainForm.bTDisplayDoubleClick(Sender: TObject);
+// --------------------------------
+// Increase display duration by 25%
+// --------------------------------
 begin
-     State := Replay ;
+    edTDisplay.Value := edTDisplay.Value*1.25 ;
+    UpdateDisplayDuration ;
+    end;
+
+
+procedure TMainForm.bTDisplayHalfClick(Sender: TObject);
+// --------------------------
+// Decrease display duration
+// --------------------------
+begin
+    edTDisplay.Value := edTDisplay.Value*(1.0/1.25) ;
+    UpdateDisplayDuration ;
+    end;
+
+
+procedure TMainForm.UpdateDisplayDuration ;
+// ------------------------------
+// Update display window duration
+// ------------------------------
+begin
+    scDisplay.MaxPoints :=  Round(edTDisplay.Value) ;
+    scDisplay.XMax := scDisplay.MaxPoints -1 ;
+    scDisplay.VerticalCursors[0] := scDisplay.MaxPoints div 2 ;
+    scDisplay.NumPoints := NumPointsInBuf - scDisplay.XOffset ;
+    scDisplay.invalidate ;
+    end;
+
+
+procedure TMainForm.scDisplayCursorChange(Sender: TObject);
+// --------------------------------------------
+// Display cursor moved or display zoom changed
+// --------------------------------------------
+var
+    ch : Integer ;
+begin
+     // Ensure that horizontal cursor remains at zero
+     for ch := 0 to scDisplay.NumChannels-1 do
+         if scDisplay.YMin[ch] < 0.0 then scDisplay.YMin[ch] := 0.0 ;
+
+end;
+
+
+procedure TMainForm.bAddAgonistClick(Sender: TObject);
+// ----------------------------
+// Add selected dose of agonist
+// ----------------------------
+var
+    iDrug : Integer ;
+    Dose,Scale : Single ;
+    ChartAnnotation,Units : string ;
+begin
+
+    iDrug := Integer(cbAgonist.Items.Objects[cbAgonist.ItemIndex]);
+    Dose := 1E-6*Integer(cbAgonistDose.Items.Objects[cbAgonistDose.ItemIndex]);
+
+    Drugs[iDrug].DoseInjected := Dose*AddNoise(0.1) ;
+
+    if Dose < 1.0 then
+       begin
+       Units := 'ug/kg';
+       Scale := 1000.0 ;
+       end
+    else
+       begin
+       Units := 'mg/kg';
+       Scale := 1.0 ;
+       end ;
+
+    // Add chart annotation
+    ChartAnnotation := format('%s %.3g %s',
+                       [Drugs[iDrug].ShortName,Dose*Scale,Units] ) ;
+     AddDrugMarker( ChartAnnotation ) ;
+
+end;
+
+
+procedure TMainForm.bAddAntagonistClick(Sender: TObject);
+// -------------------------------
+// Add selected dose of antagonist
+// -------------------------------
+var
+    iDrug : Integer ;
+    Dose,Scale : Single ;
+    ChartAnnotation,Units : string ;
+begin
+
+    iDrug := Integer(cbAntagonist.Items.Objects[cbAntagonist.ItemIndex]);
+    Dose := 1E-6*Integer(cbAntagonistDose.Items.Objects[cbAntagonistDose.ItemIndex]);
+    Drugs[iDrug].DoseInjected := Dose*AddNoise(0.1) ;
+
+    if Dose < 1.0 then
+       begin
+       Units := 'ug/kg';
+       Scale := 1000.0 ;
+       end
+    else
+       begin
+       Units := 'mg/kg';
+       Scale := 1.0 ;
+       end ;
+
+    // Add chart annotation
+    ChartAnnotation := format('%s %.3g %s',
+                       [Drugs[iDrug].ShortName,Dose*Scale,Units] ) ;
+     AddDrugMarker( ChartAnnotation ) ;
+
+end;
+
+
+procedure TMainForm.bAddUnknownClick(Sender: TObject);
+// --------------------------------
+// Add selected dose of unknown drug
+// ---------------------------------
+var
+    iDrug : Integer ;
+    Dose,Scale : Single ;
+    ChartAnnotation,Units : string ;
+begin
+
+    iDrug := Integer(cbUnknown.Items.Objects[cbUnknown.ItemIndex]);
+    Dose := 1E-6*Integer(cbUnknownDose.Items.Objects[cbUnknownDose.ItemIndex]);
+    Drugs[iDrug].DoseInjected := Dose*AddNoise(0.1) ;
+
+    if Dose < 1.0 then
+       begin
+       Units := 'ug/kg';
+       Scale := 1000.0 ;
+       end
+    else
+       begin
+       Units := 'mg/kg';
+       Scale := 1.0 ;
+       end ;
+
+    // Add chart annotation
+    ChartAnnotation := format('%s %.3g %s',
+                       [Drugs[iDrug].ShortName,Dose*Scale,Units] ) ;
+     AddDrugMarker( ChartAnnotation ) ;
+
+end;
+
+
+procedure TMainForm.bNewExperimentClick(Sender: TObject);
+// ---------------------------------
+// Start new experiment with new rat
+// ---------------------------------
+begin
+     if MessageDlg('New Experiment! Are you sure?', mtConfirmation,
+        [mbYes,mbNo],0) = mrYes then
+        begin
+        InitializeSimulation ;
+        end;
+
 end;
 
 procedure TMainForm.bStartClick(Sender: TObject);
-var
-   FileLength : LongInt ;
+// ---------------------
+// Start chart recording
+// ---------------------
 begin
-     State := Recording ;
-     FileLength := FileSeek( FileHandle, 0, 2 ) ;
+
      bStart.Enabled := False ;
      bStop.Enabled := True ;
-     sbRecord.Enabled := False ;
+     bStart.Enabled := False ;
      mnFile.Enabled := False ;
-     BufPointer := -1 ;
-     InitializeDisplay ;
+     // Disable changes to normal/pithed state once experiment started
+     gpExperimentType.Enabled := False ;
+     UnSavedData := True ;
+
      end;
 
-procedure TMainForm.mnPrintClick(Sender: TObject);
-begin
-     PrintTraces ;
-     end;
 
-procedure TMainForm.pbDisplayMouseMove(Sender: TObject; Shift: TShiftState;
-  X, Y: Integer);
+procedure TMainForm.bStimulationOnClick(Sender: TObject);
+// ---------------------------------
+// Stimulate autonomic nerve pathway
+// ---------------------------------
 var
-   ch,chCursor : Integer ;
-   XValue,YValue : single ;
+    ChartAnnotation : string ;
 begin
 
-     chCursor := 0 ;
-     XValue := (X-Channel[0].left) / Channel[0].xScale + Channel[0].xMin ;
-     for ch := 0 to ChMarker-1 do if Channel[ch].InUse then begin
-         YValue := (Channel[ch].Bottom - Y) / Channel[ch].yScale
-                   + Channel[ch].yMin ;
-         if ((Channel[ch].yMin <= YValue)
-            and (YValue <= Channel[ch].yMax) ) then ChCursor := Ch ;
-        end ;
+   if rbSympNerve.Checked then
+      begin
+      // Sympathetic nerves (excluding adrenal) acting on beta1
+      Drugs[iSympBloodVessels].DoseInjected := 4.0*Drugs[iSympBloodVessels].Beta1AdR.Potency
+                                        *( 0.5 + Alpha2Adr ) ;
+      ChartAnnotation := 'Symp.Nv.(blood ves.)';
+      end
+   else if rbSympNerveToHeart.Checked then
+      begin
+      // Sympathetic nerves to heart Beta1 and Alpha1 a
+      Drugs[iSympHeart].DoseInjected := 5.0*Drugs[iSympHeart].Beta1AdR.Potency
+                                        *( 0.5 + Alpha2Adr ) ;
+      ChartAnnotation := 'Symp.Nv.(heart)';
+      end
+   else if rbSympNerveToAdrenals.Checked then
+      begin
+      // Sympathetic nerves to adrenals
+      Drugs[iSympAdrenal].DoseInjected := 2.*Drugs[iSympAdrenal].Beta1AdR.Potency ;
+      ChartAnnotation := 'Symp.Nv.(adrenals)';
+      end
+   else if rbRenalNerve.Checked then
+      begin
+      // Vagus nerve
+      Drugs[iRenalNerve].DoseInjected := 5.*Drugs[iRenalNerve].Angt1R.Potency ;
+      ChartAnnotation := 'Renal Nv.';
+      end
+   else
+      begin
+      // Sympathetic nerves (excluding adrenal)
+      Drugs[iVagusNerve].DoseInjected := 10.0*Drugs[iVagusNerve].VagChR.Potency ;
+      ChartAnnotation := 'Vagus Nv.';
+      end;
 
-     if (Y <= Channel[ChCursor].Bottom)
-        and (Y >= Channel[ChCursor].Top) then begin
-        YValue := (Channel[ChCursor].Bottom - Y) / Channel[ChCursor].yScale
-                   + Channel[ChCursor].yMin ;
-        edCursor.text := format('T= %.1f s %s= %.1f %s',
-                              [ XValue,
-                                Channel[ChCursor].ADCName,
-                                YValue,
-                                Channel[ChCursor].ADCUnits] )
-        end
-     else edCursor.text := ' ' ;
-     end ;
+
+   AddDrugMarker( ChartAnnotation ) ;
+
+
+end;
 
 
 procedure TMainForm.mnExitClick(Sender: TObject);
@@ -2070,15 +1827,6 @@ begin
      Close ;
      end ;
 
-procedure TMainForm.mnHelpClick(Sender: TObject);
-// -----------------------
-//  Help/Contents menu item
-//  -----------------------
-begin
-//     ShellExecute(Handle,'open', 'c:\windows\hh.exe',PChar(Application.HelpFile),
-//     nil, SW_SHOWNORMAL) ;
-     //Application.HelpContext(10) ;
-     end;
 
 procedure TMainForm.mnContentsClick(Sender: TObject);
 // -----------------------
@@ -2086,6 +1834,7 @@ procedure TMainForm.mnContentsClick(Sender: TObject);
 //  -----------------------
 var
    pWinDir : PChar ;
+   FileName : string ;
 begin
 
 
@@ -2102,105 +1851,230 @@ begin
      end;
 
 
-procedure TMainForm.mnAboutClick(Sender: TObject);
+procedure TMainForm.mnCopyDataClick(Sender: TObject);
+// ----------------------------------------------------
+// Copy sample values of displayed signals to clipboard
+// ----------------------------------------------------
 begin
-     AboutFrm.ShowModal ;
+     scDisplay.CopyDataToClipboard ;
      end;
+
+
+procedure TMainForm.mnCopyImageClick(Sender: TObject);
+// -----------------------------------------
+// Copy image of displayed trace to clipboad
+// -----------------------------------------
+begin
+
+     scDisplay.ChanCalBar[0] :=  scDisplay.ChanGridSpacing[0] ;
+     scDisplay.TCalBar := scDisplay.TimeGridSpacing/scDisplay.TScale ;
+     scDisplay.PrinterFontName := 'Arial' ;
+     scDisplay.PrinterFontSize := 10 ;
+     scDisplay.MetafileWidth := 1000 ;
+     scDisplay.MetafileHeight := 600 ;
+     scDisplay.PrinterPenWidth := 2 ;
+     scDisplay.CopyImageToClipBoard ;
+
+     end;
+
+
+procedure TMainForm.SaveToFile(
+          FileName : String
+          ) ;
+// ----------------------------
+// Save chart recording to file
+// ----------------------------
+var
+   Header : array[1..FileHeaderSize] of ansichar ;
+   i : Integer ;
+   FileHandle : THandle ;
+begin
+
+     FileHandle := FileCreate( FileName ) ;
+     if Integer(FileHandle) < 0 then Exit ;
+
+     { Initialise empty header buffer with zero bytes }
+     for i := 1 to sizeof(Header) do Header[i] := #0 ;
+
+     AppendInt( Header, 'NPOINTS=', NumPointsInBuf ) ;
+     AppendLogical( Header, 'PITHED=', rbPithedRat.Checked ) ;
+
+     AppendInt( Header, 'NMARKERS=', MarkerList.Count ) ;
+     for i := 0 to MarkerList.Count-1 do
+         begin
+         AppendInt( Header, format('MKP%d=',[i]), Integer(MarkerList.Objects[i])) ;
+         AppendString( Header, format('MKT%d=',[i]), MarkerList.Strings[i] ) ;
+         end ;
+
+     // Write header
+     FileWrite( FileHandle, Header, SizeOf(Header)) ;
+
+     // Write chart data
+     FileWrite( FileHandle, ADC, NumPointsInBuf*scDisplay.NumChannels*2 ) ;
+
+     // Close file
+     FileClose( FileHandle ) ;
+
+     UnSavedData := False ;
+     end ;
+
+
+procedure TMainForm.LoadFromFile(
+          FileName : String
+          ) ;
+// ----------------------------
+// Load chart recording from file
+// ----------------------------
+var
+   Header : array[1..FileHeaderSize] of ansichar ;
+   i : Integer ;
+   FileHandle : Integer ;
+   NumMarkers : Integer ;
+   MarkerPoint : Integer ;
+   MarkerText : String ;
+   Pithed : Boolean ;
+begin
+
+     NumPointsInBuf := 0 ;
+
+     FileHandle := FileOpen( FileName, fmOpenRead ) ;
+     if FileHandle < 0 then Exit ;
+
+     FileSeek( FileHandle, 0, 0 ) ;
+
+     // Clear header
+     for i := 1 to High(Header) do Header[i] := #0 ;
+
+     // Read header
+     FileRead(FileHandle, Header, Sizeof(Header)) ;
+
+     // Get tissue type
+     ReadLogical( Header, 'PITHED=', Pithed ) ;
+     rbPithedRat.Checked := Pithed ;
+
+     InitializeSimulation ;
+
+     NumPointsInBuf := 0 ;
+     ReadInt( Header, 'NPOINTS=', NumPointsInBuf ) ;
+
+     ReadInt( Header, 'NMARKERS=', NumMarkers ) ;
+     MarkerList.Clear ;
+     for i := 0 to NumMarkers-1 do
+         begin
+         ReadInt( Header, format('MKPOINT%d=',[i]), MarkerPoint) ;
+         ReadInt( Header, format('MKP%d=',[i]), MarkerPoint) ;
+         ReadString( Header, format('MKTEXT%d=',[i]), MarkerText ) ;
+         ReadString( Header, format('MKT%d=',[i]), MarkerText ) ;
+         MarkerList.AddObject( MarkerText, TObject(MarkerPoint)) ;
+         end ;
+
+     if NumPointsInBuf > 0 then
+        begin
+        FileRead( FileHandle, ADC, NumPointsInBuf*scDisplay.NumChannels*2 ) ;
+        end ;
+
+     // Close data file
+     FileClose( FileHandle ) ;
+
+     UnsavedData := False ;
+     scDisplay.XOffset := -1 ;
+     sbDisplay.Position := 0 ;
+     sbDisplay.Max := NumPointsInBuf ;
+     scDisplay.Invalidate ;
+
+     end ;
+
 
 
 procedure TMainForm.mnLoadRatClick(Sender: TObject);
-{ -------------------------------------------
-  Load an experiment from a .RAT storage file
-  -------------------------------------------}
-var
-   TempHandle : Integer ;
-   i,nBufs,FileLength,nw : longInt ;
+// -------------------------
+// Load experiment from file
+// -------------------------
 begin
-     if OpenDialog.execute then begin
-        if FileExists( OpenDialog.FileName ) then begin
-           { Open .RAT file containing experiment }
-           TempHandle := FileOpen( OpenDialog.FileName, fmOpenReadWrite ) ;
-           Caption := ProgName + ' : ' + OpenDialog.FileName ;
-           FileName := OpenDialog.FileName ;
-           { Find out how big it is }
-           FileLength := FileSeek( TempHandle, 0, 2 ) ;
-           nBufs := FileLength div SizeOf(FileBuf) ;
-           { Create an empty working file }
-           FileClose( FileHandle ) ;
-           FileHandle := FileCreate( 'Rat.tmp' ) ;
-           { Copy data from .RAT storage file into work file }
-           nw := FileSeek( TempHandle, 0, 0 ) ;
-           for i := 1 to nBufs do begin
-               nw := FileRead( TempHandle, FileBuf, Sizeof(FileBuf)) ;
-               nw := FileWrite( FileHandle, FileBuf, Sizeof(FileBuf)) ;
-               end ;
-           { Close .RAT file }
-           FileClose( TempHandle ) ;
 
-           sbRecord.Max := nBufs-1 ;
-           sbRecord.Min := 0 ;
-           bStart.Enabled := True ;
-           bStop.Enabled := False ;
-           if nBufs > 0 then sbRecord.Enabled := True ;
-           State := Replay ;
-           end ;
+    if UnSavedData then
+        begin
+        if MessageDlg('Existing experiment will be overwritten! Are you sure?', mtConfirmation,
+           [mbYes,mbNo],0) = mrNo then Exit ;
         end ;
-     end ;
+
+   OpenDialog.options := [ofPathMustExist] ;
+   OpenDialog.FileName := '' ;
+
+   OpenDialog.DefaultExt := DataFileExtension ;
+   //OpenDialog.InitialDir := OpenDirectory ;
+   OpenDialog.Filter := format( ' Experiment (*%s)|*%s',
+                                [DataFileExtension,DataFileExtension]) ;
+   OpenDialog.Title := 'Load Experiment ' ;
+
+   // Open selected data file
+   if OpenDialog.execute then LoadFromFile( OpenDialog.FileName ) ;
+
+   end;
+
 
 procedure TMainForm.mnSaveRatClick(Sender: TObject);
-{ -------------------------------------------
-  Save an experiment to a .RAT storage file
-  -------------------------------------------}
-var
-   TempHandle : Integer ;
-   i,nw : longInt ;
+// -----------------------
+// Save experiment to file
+// -----------------------
 begin
-     if SaveDialog.execute then begin
-        { Create .RCV storage file to hold experiment }
-        TempHandle := FileCreate( SaveDialog.FileName ) ;
-        FileName := SaveDialog.FileName ;
-        Caption := ProgName + ' : ' + SaveDialog.FileName ;
-        { Copy data from .RCV storage file into work file }
-        FilePointer := FileSeek( FileHandle, 0, 0 ) ;
-        for i := 1 to sbRecord.Max+1 do begin
-            nw := FileRead( FileHandle, FileBuf, Sizeof(FileBuf));
-            nw := FileWrite( TempHandle, FileBuf, Sizeof(FileBuf)) ;
-            end ;
-        { Close .RCV file }
-        FileClose( TempHandle ) ;
-        end ;
-     end;
+
+     { Present user with standard Save File dialog box }
+     SaveDialog.options := [ofHideReadOnly,ofPathMustExist] ;
+     SaveDialog.FileName := '' ;
+     SaveDialog.DefaultExt := DataFileExtension ;
+     SaveDialog.Filter := format( '  Experiment (*%s)|*%s',
+                                  [DataFileExtension,DataFileExtension]) ;
+     SaveDialog.Title := 'Save Experiment' ;
+
+     if SaveDialog.Execute then SaveToFile( SaveDialog.FileName ) ;
+
+     end ;
+
 
 procedure TMainForm.mnNewRatClick(Sender: TObject);
 begin
      if MessageDlg('New Experiment! Are you sure?', mtConfirmation,
-        [mbYes,mbNo],0) = mrYes then begin
-        FileClose( FileHandle ) ;
+        [mbYes,mbNo],0) = mrYes then
+        begin
         InitializeSimulation ;
         end;
      end;
+
+
+procedure TMainForm.mnPrintClick(Sender: TObject);
+// ---------------------------
+// Print displayed chart trace
+// ---------------------------
+var
+    ch : Integer ;
+begin
+     PrintFrm.Left := Left + 50 ;
+     PrintFrm.Top := Top + 50 ;
+     PrintFrm.ShowModal ;
+     if PrintFrm.ModalResult = mrOK then
+        begin
+        scDisplay.PrinterLeftMargin := 25 ;
+        scDisplay.PrinterRightMargin := 25 ;
+        scDisplay.PrinterTopMargin := 25 ;
+        scDisplay.PrinterBottomMargin := 25 ;
+        for ch := 0 to scDisplay.NumChannels-1 do
+            scDisplay.ChanCalBar[ch] :=  scDisplay.ChanGridSpacing[ch] ;
+        scDisplay.TCalBar := scDisplay.TimeGridSpacing/scDisplay.TScale ;
+        scDisplay.PrinterFontName := 'Arial' ;
+        scDisplay.PrinterFontSize := 10 ;
+        scDisplay.PrinterPenWidth := 2 ;
+        scDisplay.Print ;
+        end ;
+     end;
+
 
 procedure TMainForm.FormActivate(Sender: TObject);
 begin
 
      REsize ;
 
-     AboutFrm.ShowModal ;
-
      end;
-
-
-function PrinterPointsToPixels( PointSize : Integer ) : Integer ;
-var
-   PixelsPerInch : single ;
-begin
-
-     { Get height and width of page (in mm) and calculate
-       the size of a pixel (in cm) }
-     PixelsPerInch := GetDeviceCaps( printer.handle, LOGPIXELSX ) ;
-     PrinterPointsToPixels := Trunc( (PointSize*PixelsPerInch) / 72. ) ;
-     end ;
-
 
 
 procedure TMainForm.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
@@ -2209,6 +2083,7 @@ begin
         [mbYes,mbNo], 0 ) = mrYes then CanClose := True
                                   else CanClose := False ;
      end;
+
 
 procedure TMainForm.FormClose(Sender: TObject; var Action: TCloseAction);
 // -----------------------------------------
@@ -2220,62 +2095,13 @@ begin
 
      Timer.Enabled := False ;
 
-     // Close file
-     FileClose( FileHandle ) ;
-
      Heart.Free ;
      Art.Free ;
      Ven.Free ;
      Con.Free ;
 
-     for i := 0 to High(Drugs) do begin
-         Drugs[i].Free ;
-         end ;
+     for i := 0 to High(Drugs) do Drugs[i].Free ;
 
-     DeleteFile( PChar(TempFileName) ) ;
-     end;
-
-procedure TMainForm.mnStimCardiacClick(Sender: TObject);
-{ --------------------------------------
-  Stimulation cardiac sympathetic nerves
-  --------------------------------------}
-var
-   ix : Integer ;
-begin
-     ix := FindDrug( Drugs, 'Cardiac' ) ;
-     Marker.Index := ix ;
-     Marker.Value := 0.0 ;
-     Marker.Units := NoUnits ;
-     Drugs[ix].DoseInjected := 5.0*Drugs[ix].Beta1AdR.Potency
-                               *( 0.5 + Alpha2Adr ) ;
-     end;
-
-procedure TMainForm.mnStimAdrenalClick(Sender: TObject);
-{ --------------------------------------
-  Stimulation adrenal sympathetic nerves
-  --------------------------------------}
-var
-   ix : Integer ;
-begin
-     ix := FindDrug( Drugs, 'AdrenNerve' ) ;
-     Marker.Index := ix ;
-     Marker.Value := 0.0 ;
-     Marker.Units := NoUnits ;
-     Drugs[ix].DoseInjected := 2.*Drugs[ix].Beta1AdR.Potency ;
-     end;
-
-procedure TMainForm.mnStimVagusClick(Sender: TObject);
-{ ------------------------
-  Stimulation vagal nerves
-  ------------------------}
-var
-   ix : Integer ;
-begin
-     ix := FindDrug( Drugs, 'Vagus' ) ;
-     Marker.Index := ix ;
-     Marker.Value := 0.0 ;
-     Marker.Units := NoUnits ;
-     Drugs[ix].DoseInjected := 10.0*Drugs[ix].VagChR.Potency ;
      end;
 
 
@@ -2283,6 +2109,9 @@ constructor TDrug.Create(
           NameIn : String ;
           ShortNameIn : string
           ) ;
+// ------------------
+// Create drug object
+// ------------------
 begin
      Inherited Create   ;
      Name := NameIn ;
@@ -2332,12 +2161,14 @@ begin
      RemovalRate := 0.05 ;
      end ;
 
+
 procedure TMainForm.SetAgonistPotency(
           var Drug : TDrugProperties ;
           Potency : single
           ) ;
 begin
-      if Potency <> None then begin
+      if Potency <> None then
+        begin
         Drug.Potency := Potency*AddNoise(0.5) ;
         { Efficacy - 1.0=agonist, 0.0=antagonist }
         Drug.Efficacy := 1.0 ;
@@ -2358,11 +2189,13 @@ var
    x : single ;
 begin
 
-     if iDrug = 0 then begin
+     if iDrug = 0 then
+        begin
         Numerator := 0.0 ;
         Denominator := 1.0 ;
         end ;
-     if Drug.Efficacy <> None then begin
+     if Drug.Efficacy <> None then
+        begin
         x := Dose/(Drug.Potency*PotencyShift) ;
         Denominator := Denominator + x ;
         Numerator := Numerator + Drug.Efficacy*x ;
@@ -2378,7 +2211,8 @@ procedure TMainForm.SetAntagonistPotency(
           Potency : single
           ) ;
 begin
-      if Potency <> None then begin
+      if Potency <> None then
+        begin
         Drug.Potency := Potency*AddNoise(0.5) ;
         { Efficacy - 1.0=agonist, 0.0=antagonist }
         Drug.Efficacy := 0.0 ;
@@ -2387,42 +2221,49 @@ begin
      end ;
 
 
-procedure TMainForm.mnRenalClick(Sender: TObject);
-{ --------------------------------------
-  Stimulation renal nerves
-  --------------------------------------}
-var
-   ix : Integer ;
+function TMainForm.IsAgonist( Drug : TDrug ) : Boolean ;
+// ------------------------------------
+// Return TRUE if drug is an antagonist
+// ------------------------------------
 begin
-     ix := FindDrug( Drugs, 'Renal' ) ;
-     Marker.Index := ix ;
-     Marker.Value := 0.0 ;
-     Marker.Units := 0.0 ;
-     Drugs[ix].DoseInjected := 5.*Drugs[ix].Angt1R.Potency ;
-     end;
+
+    if Drug.Alpha1AdR.Efficacy > 0.0 then Result := True
+    else if Drug.Alpha2AdR.Efficacy > 0.0 then Result := True
+    else if Drug.Beta1AdR.Efficacy > 0.0 then Result := True
+    else if Drug.Beta2AdR.Efficacy > 0.0 then Result := True
+    else if Drug.MusChR.Efficacy > 0.0 then Result := True
+    else if Drug.VagChR.Efficacy > 0.0 then Result := True
+    else if Drug.NicChR.Efficacy > 0.0 then Result := True
+    else if Drug.HMCaChannel.Efficacy > 0.0 then Result := True
+    else if Drug.SMCaChannel.Efficacy > 0.0 then Result := True
+    else if Drug.AdenR.Efficacy > 0.0 then Result := True
+    else if Drug.KChannel.Efficacy > 0.0 then Result := True
+    else if Drug.NOX.Efficacy > 0.0 then Result := True
+    else if Drug.NOS.Efficacy > 0.0 then Result := True
+    else if Drug.Angt1R.Efficacy > 0.0 then Result := True
+    else if Drug.Angt2R.Efficacy > 0.0 then Result := True
+    else if Drug.BradR.Efficacy > 0.0 then Result := True
+    else if Drug.ACE.Efficacy > 0.0 then Result := True
+    else if Drug.DigR.Efficacy > 0.0 then Result := True
+    else if Drug.PDE.Efficacy > 0.0 then Result := True
+    else Result := False ;
+
+    end;
 
 
-function PrinterCmToPixels(
-         const Axis : string;
-         cm : single
-         ) : Integer ;
-{ -------------------------------------------
-  Convert from cm (on printer page) to pixels
-  -------------------------------------------}
-var
-   PixelWidth,PixelHeight : single ;
+procedure TMainForm.AddDrugMarker(
+          ChartAnnotation : String
+          ) ;
+// ------------------------------
+// Add drug addition/wash marker
+// ------------------------------
 begin
-     { Get height and width of page (in mm) and calculate
-       the size of a pixel (in cm) }
-     if UpperCase(Axis) = 'H' then begin
-        { Printer pixel width (mm) }
-        PixelWidth := GetDeviceCaps( printer.handle, HORZSIZE ) ;
-        Result := Trunc( ( 10. * cm * printer.pagewidth) / PixelWidth );
-        end
-     else begin
-        { Printer pixel height (mm) }
-        PixelHeight := GetDeviceCaps( printer.handle, VERTSIZE ) ;
-        Result := Trunc( ( printer.pageheight * 10. * cm )/ PixelHeight ) ;
+     if MarkerList.Count < MaxMarkers then
+        begin
+        ChartAnnotation := AnsiReplaceStr( ChartAnnotation, '-00', '-' ) ;
+        ChartAnnotation := AnsiReplaceStr( ChartAnnotation, '00E', '0E' ) ;
+        MarkerList.AddObject( ChartAnnotation, TObject(NumPointsInBuf) ) ;
+        scDisplay.AddMarker( NumPointsInBuf - scDisplay.XOffset, ChartAnnotation ) ;
         end ;
      end ;
 
@@ -2436,50 +2277,58 @@ begin
      end;
 
 
-procedure TMainForm.mndisplayClick(Sender: TObject);
-begin
-     OptionsFrm.ABPColor.brush.color := Channel[ChABP].color ;
-     OptionsFrm.ckABPShow.checked := Channel[ChABP].InUse ;
-     OptionsFrm.LVPColor.brush.color := Channel[ChLVP].color ;
-     OptionsFrm.ckLVPShow.checked := Channel[ChLVP].InUse ;
-     OptionsFrm.CVPColor.brush.color := Channel[ChCVP].color ;
-     OptionsFrm.ckCVPShow.checked := Channel[ChCVP].InUse ;
-     OptionsFrm.HCFColor.brush.color := Channel[ChHCF].color ;
-     OptionsFrm.ckHCFShow.checked := Channel[ChHCF].InUse ;
-     OptionsFrm.HRColor.brush.color := Channel[ChHR].color ;
-     OptionsFrm.ckHRShow.checked := Channel[ChHR].InUse ;
-
-     OptionsFrm.ShowModal ;
-
-     if OptionsFrm.ModalResult = mrOK then begin
-        Channel[ChABP].color := OptionsFrm.ABPColor.brush.color ;
-        Channel[ChABP].InUse := OptionsFrm.ckABPShow.checked ;
-        Channel[ChLVP].color := OptionsFrm.LVPColor.brush.color ;
-        Channel[ChLVP].InUse := OptionsFrm.ckLVPShow.checked ;
-        Channel[ChCVP].color := OptionsFrm.CVPColor.brush.color ;
-        Channel[ChCVP].InUse := OptionsFrm.ckCVPShow.checked ;
-        Channel[ChHCF].color := OptionsFrm.HCFColor.brush.color ;
-        Channel[ChHCF].InUse := OptionsFrm.ckHCFShow.checked ;
-        Channel[ChHR].color := OptionsFrm.HRColor.brush.color ;
-        Channel[ChHR].InUse := OptionsFrm.ckHRShow.checked ;
-        State := Replay ;
-        end ;
-     end;
-
-procedure TMainForm.mnStimBloodVesselsClick(Sender: TObject);
-{ -----------------------------------------------
-  Stimulation sympathetic nerves to blood vessels
-  -----------------------------------------------}
+procedure TMainForm.SetDoseList(
+          cbDrug : TComboBox ;
+          cbDose : TComboBox ) ;
+// -----------------------------
+// Create list of available doses
+// -----------------------------
 var
-   ix : Integer ;
+    iDrug,i : Integer ;
+    Scale,Dose : Single ;
+    Units : String ;
 begin
-     ix := FindDrug( Drugs, 'SympNerve' ) ;
-     Marker.Index := ix ;
-     Marker.Value := 0.0 ;
-     Marker.Units := NoUnits ;
-     Drugs[ix].DoseInjected := 4.0*Drugs[ix].Beta1AdR.Potency
-                               *( 0.5 + Alpha2Adr ) ;
-     end;
+
+   cbDose.Clear ;
+
+   if cbDrug.Items.Count > 1 then
+      begin
+      cbDrug.ItemIndex := Max(cbDrug.ItemIndex,0) ;
+      iDrug := Integer(cbDrug.Items.Objects[cbDrug.ItemIndex]) ;
+      if Drugs[iDrug].MaxDose <= 1.0 then
+         begin
+         Scale := 1000.0 ;
+         Units := 'ug/kg' ;
+         end
+      else
+         begin
+         Scale := 1.0 ;
+         Units := 'mg/kg' ;
+         end ;
+
+      Dose := Drugs[iDrug].MinDose ;
+      cbDose.Clear ;
+      while Dose <= Drugs[iDrug].MaxDose do
+       begin
+       if Dose <= Drugs[iDrug].MaxDose then cbDose.Items.Add( format(' %.2f %s ',[Dose*Scale,Units]) ) ;
+       if (2.0*Dose) <= Drugs[iDrug].MaxDose then cbDose.Items.Add( format(' %.1f %s ',[2.0*Dose*Scale,Units]) ) ;
+       if (5.0*Dose) <= Drugs[iDrug].MaxDose then cbDose.Items.Add( format(' %.1f %s ',[5.0*Dose*Scale,Units]) ) ;
+       Dose := Dose*10.0 ;
+       end ;
+     cbDose.ItemIndex := 0 ;
+
+     // Add dose in ng/kg in objects field
+
+     for i := 0 to cbDose.Items.Count-1 do
+         begin
+         Dose := ExtractFLoat( cbDose.Items[i], 0.0 );
+         if ContainsText(cbDose.Text,'ug/kg') then Scale := 1000.0
+         else if ContainsText(cbDose.Text,'mg/kg') then Scale := 1E6
+         else Scale := 1.0 ;
+         cbDose.Items.Objects[i] := Tobject(Round(Dose*Scale)) ;
+         end;
+     end ;
+end ;
 
 
 end.

@@ -830,24 +830,24 @@ Removes this Strathclyde Institute for Pharmacy & Biomedical Sciences product
 0
 {17DD1EDE-408C-4401-BE58-DAE835141107}
 $TARGETDIR$\Ratcvs.exe
-Ratcvs
+RatCVS
 $SHORTCUTFOLDER$
 Link to Ratcvs.exe
 
 $TARGETDIR$
-
-
-0
+|FALSE
+|
+0|
 {14AFA7CF-4E7C-4FAE-96BD-38339619CB8E}
 $TARGETDIR$\Ratcvs.exe
-Ratcvs
+RatCVS
 $DESKTOPDIR$
 Link to Ratcvs.exe
 
 $TARGETDIR$
-
-
-0
+|FALSE
+|
+0|
 {414410AE-4AD5-4A2A-A75B-BF77B71CB94E}
 REMOVE=ALL,TRUE,$PRODUCTCODE$,FALSE,,,REMOVEOLD,ERROROLD,TRUE
 mMSI.dll\mMSIExec.dll

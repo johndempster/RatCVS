@@ -139,8 +139,8 @@ else
   Comment: Install/Re-Install product
   Create Shortcut $SHORTCUTFOLDER$\Uninstall #TITLE# to $UNINSTALLLINK$
   [OFFLINE CONTENT]
-  Create Shortcut $SHORTCUTFOLDER$\Ratcvs to $TARGETDIR$\Ratcvs.exe
-  Create Shortcut $DESKTOPDIR$\Ratcvs to $TARGETDIR$\Ratcvs.exe
+  Create Shortcut $SHORTCUTFOLDER$\RatCVS to $TARGETDIR$\Ratcvs.exe
+  Create Shortcut $DESKTOPDIR$\RatCVS to $TARGETDIR$\Ratcvs.exe
   Install Files C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\RatCVS.chm to $TARGETDIR$
   Install Files C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\Ratcvs.exe to $TARGETDIR$
   [DEFINE WEB MEDIA Default]

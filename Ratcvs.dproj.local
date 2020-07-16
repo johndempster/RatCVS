@@ -1,2 +1,10 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<BorlandProject/>
+<BorlandProject>
+	<Transactions>
+    <Transaction>2020/07/02 10:47:06.000.358,C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\ADDDRUG.PAS=</Transaction>
+    <Transaction>2020/07/02 10:47:14.000.301,C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\OPTIONS.PAS=</Transaction>
+    <Transaction>2020/07/02 10:55:35.000.443,=C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\PrintUnit.pas</Transaction>
+    <Transaction>2020/07/02 11:01:54.000.923,C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\ABOUT.PAS=</Transaction>
+    <Transaction>2020/07/14 15:14:44.000.702,C:\Users\John\Documents\Embarcadero\Studio\Projects\RatCVS\setpage.pas=</Transaction>
+  </Transactions>
+</BorlandProject>
