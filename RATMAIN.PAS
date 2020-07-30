@@ -50,6 +50,8 @@ unit Ratmain;
   V3.3.5 19.06.19     Adrenaline Beta2AdR EC50 reduced and Alpha1AdR EC50 restored to previous values
                       to produce INCREAESE in ABP at 5-10 ug/kg to make it more consistent with effect of ADR observed in original pithed rat papers.
   V3.3.6 16.07.20     Chart display updated to use scopedisplay component. Vertical range can now be adjusted.
+  3.3.37 30.07.20     Channel blockers and enzyme inhibitors now moved from agonisy to antagonisy list
+                      Incorrect alpha-2 adrenoceptor agonist activity of phentolamine removed
 
   ======================================================================== }
 
@@ -277,7 +279,8 @@ TFileBuf = Array[0..511] of single ;
     InitialMixing : Cardinal ;
     MarkerList : TStringList ;   // Chart annotation list
 
-    NumStandardDrugs : Integer ; // No. of standard drugs available
+    LastAgonist : Integer ;      // Index of last agonist in drug list
+    LastAntagonist : Integer ;      // Index of last antagonist in drug list
 
    UnsavedData : Boolean ;
    t : TTime ;
@@ -392,7 +395,7 @@ procedure TMainForm.FormCreate(Sender: TObject);
   ------------------------------------}
 
 begin
-     Caption := 'Rat Cardiovascular System (c) J. Dempster, University of Strathclyde (1996-2020) V3.3.6 (16.07.20)' ;
+     Caption := 'Rat Cardiovascular System (c) J. Dempster, University of Strathclyde (1996-2020) V3.3.7 (30.07.20)' ;
 
      ProgName := Caption ;
 
@@ -460,6 +463,8 @@ begin
      Drugs[iDrug].MinDose := 1E-4 ;
      Drugs[iDrug].MaxDose := 1E-1 ;
 
+//   Agonists
+//   --------
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create( 'Noradrenaline', 'Nor' ) ;
@@ -489,11 +494,78 @@ begin
      Drugs[iDrug].MaxDose := 1. ;
 
      Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Acetylcholine', 'Ach' ) ;
+     Drugs[iDrug].OnRate := FastOn ;
+     Drugs[iDrug].RemovalRate := FastOff*2.0 ;
+     SetAgonistPotency( Drugs[iDrug].MusChR, 5E-3 ) ;
+     SetAgonistPotency( Drugs[iDrug].NicChR, 0.15 ) ;
+     SetAgonistPotency( Drugs[iDrug].Alpha1AdR, 0.3 ) ;
+     SetAgonistPotency( Drugs[iDrug].Beta1AdR, 0.15 ) ;
+     Drugs[iDrug].MinDose := 1E-3 ;
+     Drugs[iDrug].MaxDose := 1. ;
+
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Adenosine', 'Ade' ) ;
+     Drugs[iDrug].OnRate := FastOn ;
+     Drugs[iDrug].RemovalRate := FastOff ;
+     SetAgonistPotency( Drugs[iDrug].AdenR, 1.0 ) ;
+     Drugs[iDrug].MinDose := 0.1 ;
+     Drugs[iDrug].MaxDose := 100. ;
+
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Cromakalim', 'Cro' ) ;     { K channel opener }
+     Drugs[iDrug].OnRate := SlowOn ;                            {causes vasodilation }
+     Drugs[iDrug].RemovalRate := SlowOff ;
+     SetAgonistPotency( Drugs[iDrug].KChannel, 0.3 ) ;
+     Drugs[iDrug].MinDose := 0.1 ;
+     Drugs[iDrug].MaxDose := 100. ;
+
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Angiotensin I', 'An1' ) ;
+     Drugs[iDrug].OnRate := FastOn ;
+     Drugs[iDrug].RemovalRate := FastOff ;
+     SetAgonistPotency( Drugs[iDrug].Angt1R, 1E-4 ) ;
+     iAngioTensin1 := iDrug ;
+     Drugs[iDrug].MinDose := 1E-4 ;
+     Drugs[iDrug].MaxDose := 1E-2 ;
+
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Angiotensin II', 'An2' ) ;
+     Drugs[iDrug].OnRate := FastOn ;
+     Drugs[iDrug].RemovalRate := FastOff ;
+     SetAgonistPotency( Drugs[iDrug].Angt2R, 1E-4 ) ;
+     Drugs[iDrug].MinDose := 1E-4 ;
+     Drugs[iDrug].MaxDose := 1E-2 ;
+
+     LastAgonist := iDrug ;
+
+//   Antagonists
+//   -----------
+
+
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Propranolol', 'Pro' ) ;  { Beta Adr. }
+     Drugs[iDrug].OnRate := FastOn ;                         { Antagonist }
+     Drugs[iDrug].RemovalRate := SlowOff ;                   { Potency modified 4/7/00}
+     SetAntagonistPotency( Drugs[iDrug].Beta1AdR, 0.5 ) ;
+     SetAntagonistPotency( Drugs[iDrug].Beta2AdR, 0.5 ) ;
+     Drugs[iDrug].MinDose := 0.01 ;
+     Drugs[iDrug].MaxDose := 100. ;
+
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Atenolol', 'Ate' ) ;     { Beta-1 Adr. }
+     Drugs[iDrug].OnRate := FastOn ;                          { Antagonist }
+     Drugs[iDrug].RemovalRate := SlowOff ;
+     SetAntagonistPotency( Drugs[iDrug].Beta1AdR, 10.0 ) ;
+     Drugs[iDrug].MinDose := 1.0 ;
+     Drugs[iDrug].MaxDose := 1000. ;
+
+     Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Phentolamine', 'Phe' ) ;  { Alpha Adr. }
      Drugs[iDrug].OnRate := FastOn ;                           { antagonist }
      Drugs[iDrug].RemovalRate := SlowOff ;
      SetAntagonistPotency( Drugs[iDrug].Alpha1Adr, 1E-1 ) ;
-     SetAgonistPotency( Drugs[iDrug].Alpha2Adr, 1E-1 ) ;
+     SetAntagonistPotency( Drugs[iDrug].Alpha2Adr, 1E-1 ) ;
      Drugs[iDrug].MinDose := 1E-2 ;
      Drugs[iDrug].MaxDose := 10. ;
 
@@ -506,38 +578,6 @@ begin
      Drugs[iDrug].MinDose := 0.01 ;
      Drugs[iDrug].MaxDose := 10. ;
 
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Propranolol', 'Pro' ) ;  { Beta Adr. }
-     Drugs[iDrug].OnRate := FastOn ;                         { Antagonist }
-     Drugs[iDrug].RemovalRate := SlowOff ;                   { Potency modified 4/7/00}
-     SetAntagonistPotency( Drugs[iDrug].Beta1AdR, 0.5 ) ;
-     SetAntagonistPotency( Drugs[iDrug].Beta2AdR, 0.5 ) ;
-     Drugs[iDrug].MinDose := 0.01 ;
-     Drugs[iDrug].MaxDose := 100. ;
-
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Atenolol', 'Ate' ) ;     { Beta-1 Adr. }
-     Drugs[iDrug].OnRate := FastOn ;                          { Antagonist }
-     Drugs[iDrug].RemovalRate := SlowOff ;
-     SetAntagonistPotency( Drugs[iDrug].Beta1AdR, 10.0 ) ;
-     Drugs[iDrug].MinDose := 1.0 ;
-     Drugs[iDrug].MaxDose := 1000. ;
-
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Acetylcholine', 'Ach' ) ;
-     Drugs[iDrug].OnRate := FastOn ;
-     Drugs[iDrug].RemovalRate := FastOff*2.0 ;
-     SetAgonistPotency( Drugs[iDrug].MusChR, 5E-3 ) ;
-     SetAgonistPotency( Drugs[iDrug].NicChR, 0.15 ) ;
-     SetAgonistPotency( Drugs[iDrug].Alpha1AdR, 0.3 ) ;
-     SetAgonistPotency( Drugs[iDrug].Beta1AdR, 0.15 ) ;
-     Drugs[iDrug].MinDose := 1E-3 ;
-     Drugs[iDrug].MaxDose := 1. ;
-
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Atropine', 'Atr' ) ;
      Drugs[iDrug].OnRate := FastOn ;
@@ -547,16 +587,6 @@ begin
      Drugs[iDrug].MinDose := 0.01 ;
      Drugs[iDrug].MaxDose := 10.0 ;
 
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Adenosine', 'Ade' ) ;
-     Drugs[iDrug].OnRate := FastOn ;
-     Drugs[iDrug].RemovalRate := FastOff ;
-     SetAgonistPotency( Drugs[iDrug].AdenR, 1.0 ) ;
-     Drugs[iDrug].MinDose := 0.1 ;
-     Drugs[iDrug].MaxDose := 100. ;
-
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  '8-s-p-theophylline', '8spt' ) ;
      Drugs[iDrug].OnRate := FastOn ;
@@ -564,7 +594,6 @@ begin
      SetAntagonistPotency( Drugs[iDrug].AdenR, 5.0 ) ;
      Drugs[iDrug].MinDose := 0.1 ;
      Drugs[iDrug].MaxDose := 100.0 ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Verapamil', 'Ver' ) ;
@@ -575,7 +604,6 @@ begin
      Drugs[iDrug].MinDose := 0.1 ;
      Drugs[iDrug].MaxDose := 100. ;
 
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'L-NOARG', 'LNO' ) ;
      Drugs[iDrug].OnRate := FastOn ;
@@ -583,43 +611,6 @@ begin
      SetAgonistPotency( Drugs[iDrug].NOS, 10.0 ) ;
      Drugs[iDrug].MinDose := 1.0 ;
      Drugs[iDrug].MaxDose := 1000. ;
-
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Cromakalim', 'Cro' ) ;     { K channel opener }
-     Drugs[iDrug].OnRate := SlowOn ;                            {causes vasodilation }
-     Drugs[iDrug].RemovalRate := SlowOff ;
-     SetAgonistPotency( Drugs[iDrug].KChannel, 0.3 ) ;
-     Drugs[iDrug].MinDose := 0.1 ;
-     Drugs[iDrug].MaxDose := 100. ;
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Glibenclamide', 'Gli' ) ;   { K Channel blocker }
-     Drugs[iDrug].OnRate := SlowOn ;
-     Drugs[iDrug].RemovalRate := SlowOff ;
-     SetAntagonistPotency( Drugs[iDrug].KChannel, 1.0 ) ;
-     Drugs[iDrug].MinDose := 0.1 ;
-     Drugs[iDrug].MaxDose := 100. ;
-
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Angiotensin I', 'An1' ) ;
-     Drugs[iDrug].OnRate := FastOn ;
-     Drugs[iDrug].RemovalRate := FastOff ;
-     SetAgonistPotency( Drugs[iDrug].Angt1R, 1E-4 ) ;
-     iAngioTensin1 := iDrug ;
-     Drugs[iDrug].MinDose := 1E-4 ;
-     Drugs[iDrug].MaxDose := 1E-2 ;
-
-
-     Inc(iDrug) ;
-     Drugs[iDrug] := TDrug.Create(  'Angiotensin II', 'An2' ) ;
-     Drugs[iDrug].OnRate := FastOn ;
-     Drugs[iDrug].RemovalRate := FastOff ;
-     SetAgonistPotency( Drugs[iDrug].Angt2R, 1E-4 ) ;
-     Drugs[iDrug].MinDose := 1E-4 ;
-     Drugs[iDrug].MaxDose := 1E-2 ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Captopril', 'Cap' ) ; { ACE inhibitor }
@@ -662,23 +653,29 @@ begin
      Drugs[iDrug].MinDose := 1. ;
      Drugs[iDrug].MaxDose := 1000. ;
 
-     NumStandardDrugs := iDrug + 1 ;
+     Inc(iDrug) ;
+     Drugs[iDrug] := TDrug.Create(  'Glibenclamide', 'Gli' ) ;   { K Channel blocker }
+     Drugs[iDrug].OnRate := SlowOn ;
+     Drugs[iDrug].RemovalRate := SlowOff ;
+     SetAntagonistPotency( Drugs[iDrug].KChannel, 1.0 ) ;
+     Drugs[iDrug].MinDose := 0.1 ;
+     Drugs[iDrug].MaxDose := 100. ;
+
+     LastAntagonist := iDrug ;
 
      // Create list of known agonists and antagonists and dose list for first in list
 
      cbAgonist.Clear ;
-     cbAntagonist.Clear ;
-     for i := 0 to NumStandardDrugs-1 do
-         begin
-         if IsAgonist(Drugs[i]) then cbAgonist.Items.AddObject( Drugs[i].Name, TObject(i))
-         else cbAntagonist.Items.AddObject( Drugs[i].Name, TObject(i)) ;
-         end ;
-
+     for i := 0 to LastAgonist do cbAgonist.Items.AddObject( Drugs[i].Name, TObject(i)) ;
      SetDoseList( cbAgonist, cbAgonistDose ) ;
+
+     cbAntagonist.Clear ;
+     for i := LastAgonist+1 to LastAntagonist do cbAntagonist.Items.AddObject( Drugs[i].Name, TObject(i)) ;
      SetDoseList( cbAntagonist, cbAntagonistDose ) ;
 
 
-{    *** UNKNOWN DRUGS *****************************************************}
+//   UNKNOWN DRUGS
+//   -------------
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug A', 'A' ) ;    { Acetylcholine }
@@ -691,7 +688,6 @@ begin
      Drugs[iDrug].MinDose := 1E-3 ;
      Drugs[iDrug].MaxDose := 1. ;
 
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug B', 'B' ) ;     { Adenosine  }
      Drugs[iDrug].OnRate := FastOn ;
@@ -699,7 +695,6 @@ begin
      SetAgonistPotency( Drugs[iDrug].AdenR, 1.0 ) ;
      Drugs[iDrug].MinDose := 0.1 ;
      Drugs[iDrug].MaxDose := 1000. ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug C', 'C' ) ;    { Isoprenaline }
@@ -709,7 +704,6 @@ begin
      SetAgonistPotency( Drugs[iDrug].Beta2AdR, 7E-4 ) ;
      Drugs[iDrug].MinDose := 1E-4 ;
      Drugs[iDrug].MaxDose := 1E-1 ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug D', 'D' ) ;    { Noradrenaline }
@@ -721,7 +715,6 @@ begin
      Drugs[iDrug].MinDose := 1E-3 ;
      Drugs[iDrug].MaxDose := 1. ;
 
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create( 'Drug E', 'E' ) ;      { Sodium nitroprusside }
      Drugs[iDrug].OnRate := FastOn ;
@@ -729,7 +722,6 @@ begin
      SetAgonistPotency( Drugs[iDrug].NOX, 15.0 ) ;
      Drugs[iDrug].MinDose := 1.0 ;
      Drugs[iDrug].MaxDose := 1000. ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create( 'Drug F', 'F' ) ;    { Cromokalim }
@@ -739,7 +731,6 @@ begin
      Drugs[iDrug].MinDose := 1.0 ;
      Drugs[iDrug].MaxDose := 1000. ;
 
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug G', 'G' ) ;     { Milrinone }
      Drugs[iDrug].OnRate := SlowOn ;
@@ -747,7 +738,6 @@ begin
      SetAgonistPotency( Drugs[iDrug].PDE, 10.0 ) ;
      Drugs[iDrug].MinDose := 1. ;
      Drugs[iDrug].MaxDose := 1000. ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug H', 'H' ) ;     { Propanalol }
@@ -758,7 +748,6 @@ begin
      Drugs[iDrug].MinDose := 1.0 ;
      Drugs[iDrug].MaxDose := 1000. ;
 
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug I', 'I' ) ;     { Verapamil }
      Drugs[iDrug].OnRate := SlowOn ;
@@ -768,7 +757,6 @@ begin
      Drugs[iDrug].MinDose := 0.1 ;
      Drugs[iDrug].MaxDose := 100. ;
 
-
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug J', 'J' ) ;   { L-NOARG (NOS-inhibitor) }
      Drugs[iDrug].OnRate := FastOn ;
@@ -776,7 +764,6 @@ begin
      SetAgonistPotency( Drugs[iDrug].NOS, 10.0 ) ;
      Drugs[iDrug].MinDose := 1. ;
      Drugs[iDrug].MaxDose := 1000. ;
-
 
      Inc(iDrug) ;
      Drugs[iDrug] := TDrug.Create(  'Drug K', 'K' ) ;   { Atropine }
@@ -790,10 +777,7 @@ begin
      // Create list of unknown drugs
 
      cbUnknown.Clear ;
-     for i := NumStandardDrugs to iDrug do
-         begin
-         cbUnknown.Items.AddObject( Drugs[i].Name, TObject(i))
-         end ;
+     for i := LastAntagonist+1 to iDrug do cbUnknown.Items.AddObject( Drugs[i].Name, TObject(i)) ;
     SetDoseList( cbUnknown, cbUnknownDose ) ;
 
 
