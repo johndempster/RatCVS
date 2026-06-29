@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>RatCVS</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div class="brand">
+          <p class="eyebrow" data-i18n="eyebrow">ラット心血管系シミュレーション</p>
+          <h1>RatCVS</h1>
+        </div>
+        <div class="status-chips">
+          <div class="chip"><span data-i18n="model">モデル</span><strong id="modeLabel">脊髄破壊</strong></div>
+          <div class="chip"><span data-i18n="points">点数</span><strong id="pointCount">0</strong></div>
+        </div>
+        <div class="top-actions">
+          <div class="lang-toggle" role="group" aria-label="Language">
+            <button id="langJa" class="lang-button" type="button" data-lang="ja">日本語</button>
+            <button id="langEn" class="lang-button" type="button" data-lang="en">English</button>
+          </div>
+          <button id="newExperiment" class="button secondary" type="button" data-i18n="newExperiment">新規実験</button>
+          <button id="toggleRun" class="button primary" type="button" data-i18n="start">開始</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="chart-panel" aria-label="チャート記録">
+          <div class="chart-toolbar">
+            <div class="segmented" role="group" aria-label="動物モデル">
+              <label><input type="radio" name="model" value="pithed" checked> <span data-i18n="pithed">脊髄破壊</span></label>
+              <label><input type="radio" name="model" value="normal"> <span data-i18n="normal">正常</span></label>
+            </div>
+            <label class="field compact speed-field">
+              <span data-i18n="speed">速度</span>
+              <select id="speedSelect">
+                <option value="1" data-i18n="speed1x">等倍（実機準拠）</option>
+                <option value="2">2×</option>
+                <option value="5">5×</option>
+                <option value="10">10×</option>
+                <option value="20">20×</option>
+              </select>
+            </label>
+            <label class="field compact">
+              <span data-i18n="sample">サンプル</span>
+              <select id="sampleSelect">
+                <option value="" data-i18n="sampleNone">未選択</option>
+                <option value="../acetylcholine & atropine.rat" data-i18n="sampleAch">アセチルコリン + アトロピン</option>
+                <option value="../adrenoceptor agonists.rat" data-i18n="sampleAgonist">アドレナリン受容体作動薬</option>
+                <option value="../adrenoceptor antagonists.rat" data-i18n="sampleAntagonist">アドレナリン受容体遮断薬</option>
+                <option value="../renal nerve stim losartan.rat" data-i18n="sampleRenal">腎神経刺激 + ロサルタン</option>
+                <option value="../vagus nerve & atropine.rat" data-i18n="sampleVagus">迷走神経 + アトロピン</option>
+              </select>
+            </label>
+            <label class="button file-button compact-button">
+              <span data-i18n="loadRat">.rat 読込</span>
+              <input id="fileInput" type="file" accept=".rat">
+            </label>
+            <button id="saveRecording" class="button secondary compact-button" type="button" data-i18n="saveRat">保存</button>
+            <div class="graph-controls" aria-label="グラフ操作">
+              <span id="timeRangeLabel" class="range-label">0.0 s - 0.0 s</span>
+              <button id="zoomOut" class="icon-button" type="button" aria-label="縮小">−</button>
+              <input id="zoomRange" type="range" min="250" max="12000" step="250" value="4000" aria-label="表示幅">
+              <button id="zoomIn" class="icon-button" type="button" aria-label="拡大">＋</button>
+              <button id="fitGraph" class="button secondary compact-button" type="button" data-i18n="fit">全体</button>
+            </div>
+          </div>
+
+          <div id="channelLegend" class="channel-legend" role="group" aria-label="表示チャンネル"></div>
+
+          <div id="chartWrap" class="chart-wrap">
+            <div id="chartScroll" class="chart-scroll" tabindex="0" aria-label="グラフ横スクロール">
+              <canvas id="chartCanvas" width="1280" height="720"></canvas>
+            </div>
+            <div id="hoverReadout" class="hover-readout" hidden>
+              <div class="readout-head">
+                <span id="readoutTime">0.00 s</span>
+                <span id="readoutIndex">#0</span>
+              </div>
+              <table>
+                <tbody id="readoutRows"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+
+        <aside class="side-panel" aria-label="実験操作">
+          <details class="accordion" open>
+            <summary data-i18n="currentValues">現在値</summary>
+            <div class="accordion-body">
+              <div id="liveVitals" class="vitals-grid" aria-live="polite"></div>
+            </div>
+          </details>
+
+          <details class="accordion" open>
+            <summary data-i18n="drugs">薬物</summary>
+            <div class="accordion-body">
+              <div class="drug-row">
+                <label class="field grow">
+                  <span data-i18n="agonist">作動薬</span>
+                  <select id="agonistSelect"></select>
+                </label>
+                <label class="field dose-field">
+                  <span data-i18n="dose">用量</span>
+                  <select id="agonistDose"></select>
+                </label>
+                <button id="injectAgonist" class="button inject" type="button" data-i18n="inject">投与</button>
+              </div>
+              <div class="drug-row">
+                <label class="field grow">
+                  <span data-i18n="antagonist">遮断薬</span>
+                  <select id="antagonistSelect"></select>
+                </label>
+                <label class="field dose-field">
+                  <span data-i18n="dose">用量</span>
+                  <select id="antagonistDose"></select>
+                </label>
+                <button id="injectAntagonist" class="button inject" type="button" data-i18n="inject">投与</button>
+              </div>
+              <div class="drug-row">
+                <label class="field grow">
+                  <span data-i18n="unknown">未知薬</span>
+                  <select id="unknownSelect"></select>
+                </label>
+                <label class="field dose-field">
+                  <span data-i18n="dose">用量</span>
+                  <select id="unknownDose"></select>
+                </label>
+                <button id="injectUnknown" class="button inject" type="button" data-i18n="inject">投与</button>
+              </div>
+            </div>
+          </details>
+
+          <details class="accordion" open>
+            <summary data-i18n="nerveStim">神経刺激</summary>
+            <div class="accordion-body">
+              <div class="stim-grid">
+                <button class="button secondary stim" data-stim="sympVessels" type="button" data-i18n="stimVessels">交感神経（血管）</button>
+                <button class="button secondary stim" data-stim="sympHeart" type="button" data-i18n="stimHeart">交感神経（心臓）</button>
+                <button class="button secondary stim" data-stim="sympAdrenal" type="button" data-i18n="stimAdrenal">交感神経（副腎）</button>
+                <button class="button secondary stim" data-stim="renal" type="button" data-i18n="stimRenal">腎神経</button>
+                <button class="button secondary stim" data-stim="vagus" type="button" data-i18n="stimVagus">迷走神経</button>
+              </div>
+            </div>
+          </details>
+
+          <details class="accordion">
+            <summary data-i18n="visibleRange">表示範囲</summary>
+            <div class="accordion-body">
+              <div id="visibleRangeStats" class="range-stats" aria-live="polite"></div>
+            </div>
+          </details>
+        </aside>
+      </main>
+    </div>
+
+    <script src="./app.js?v=sim-match-20260629b"></script>
+  </body>
+</html>
